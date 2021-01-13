@@ -1,0 +1,10 @@
+.vscode/ipch
+builder/output
+builder/curl
+builder/check_aesni
+db
+*.zip
+
+external/miniupnpc/Makefile
+miniupnpcstrings.h
+version/
