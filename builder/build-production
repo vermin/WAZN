@@ -1,0 +1,47 @@
+#!/bin/bash
+
+BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WAZN_DIR=$(dirname $BUILDER_DIR)
+source ${BUILDER_DIR}/environment
+
+detectos
+detectversion
+
+function build()
+{
+	aes=$1
+
+	build_dir=${BUILDER_DIR}/output/${WAZN_BUILD_OS}/${BUILD_TYPE}-${aes}
+
+	mkdir -p ${build_dir}
+	cd ${build_dir}
+	cmake_cmd ${aes}
+	make -j${THREAD_COUNT}
+}
+
+print_env
+
+build aes
+build noaes
+
+build_dir=${BUILDER_DIR}/output/${WAZN_BUILD_OS}/${BUILD_TYPE}
+
+ext=""
+
+if [ ${WAZN_BUILD_OS} == "windows" ]; then
+	ext=".exe"
+fi
+
+mv ${build_dir}-aes/bin/waznd${ext} ${build_dir}-aes/bin/waznd-aes${ext}
+mv ${build_dir}-noaes/bin/waznd${ext} ${build_dir}-noaes/bin/waznd-noaes${ext}
+
+zip -rj ${BUILDER_DIR}/output/wazn-v${WAZN_VERSION}_${WAZN_BUILD_OS}.zip \
+	${build_dir}-aes/bin/waznd-aes${ext} \
+	${build_dir}-noaes/bin/waznd-noaes${ext} \
+	${build_dir}-aes/bin/wazn-wallet-cli${ext} \
+	${build_dir}-aes/bin/wazn-wallet-rpc${ext} \
+	${build_dir}-aes/bin/wazn-quicksync-export${ext} \
+	${build_dir}-aes/bin/wazn-blockchain-prune${ext} \
+	${build_dir}-aes/bin/wazn-gen-ssl-cert${ext} \
+	${build_dir}-aes/bin/wazn-gen-trusted-multisig${ext}
+
