@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 WAZN Project
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2018, The Monero Project
 //
@@ -43,120 +43,122 @@ using namespace epee;
 
 #define DEFAULT_FILE_NAME "quicksync.raw"
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    TRY_ENTRY();
+  TRY_ENTRY();
 
-    epee::string_tools::set_module_name_and_folder(argv[0]);
+  epee::string_tools::set_module_name_and_folder(argv[0]);
 
-    uint32_t log_level = 0;
-    uint64_t block_start = 0;
-    uint64_t block_stop = 0;
-    bool export_csv = false;
+  uint32_t log_level = 0;
+  uint64_t block_start = 0;
+  uint64_t block_stop = 0;
+  bool export_csv = false;
 
-    tools::on_startup();
+  tools::on_startup();
 
-    boost::filesystem::path output_file_path;
+  boost::filesystem::path output_file_path;
 
-    po::options_description desc_cmd_only("Command line options");
-    po::options_description desc_cmd_sett("Command line options and settings options");
-    const command_line::arg_descriptor<std::string> arg_output_file = {"output-file", "Specify output file", "", true};
-    const command_line::arg_descriptor<std::string> arg_log_level = {"log-level", "0-4 or categories", ""};
-    const command_line::arg_descriptor<uint64_t> arg_block_start = {"block-start", "Start at block number", block_start};
-    const command_line::arg_descriptor<uint64_t> arg_block_stop = {"block-stop", "Stop at block number", block_stop};
+  po::options_description desc_cmd_only("Command line options");
+  po::options_description desc_cmd_sett("Command line options and settings options");
+  const command_line::arg_descriptor<std::string> arg_output_file = {"output-file", "Specify output file", "", true};
+  const command_line::arg_descriptor<std::string> arg_log_level  = {"log-level",  "0-4 or categories", ""};
+  const command_line::arg_descriptor<uint64_t> arg_block_start = {"block-start", "Start at block number", block_start};
+  const command_line::arg_descriptor<uint64_t> arg_block_stop = {"block-stop", "Stop at block number", block_stop};
 
-    command_line::add_arg(desc_cmd_sett, cryptonote::arg_data_dir);
-    command_line::add_arg(desc_cmd_sett, arg_output_file);
-    command_line::add_arg(desc_cmd_sett, cryptonote::arg_testnet_on);
-    command_line::add_arg(desc_cmd_sett, cryptonote::arg_stagenet_on);
-    command_line::add_arg(desc_cmd_sett, arg_log_level);
-    command_line::add_arg(desc_cmd_sett, arg_block_start);
-    command_line::add_arg(desc_cmd_sett, arg_block_stop);
 
-    command_line::add_arg(desc_cmd_only, command_line::arg_help);
+  command_line::add_arg(desc_cmd_sett, cryptonote::arg_data_dir);
+  command_line::add_arg(desc_cmd_sett, arg_output_file);
+  command_line::add_arg(desc_cmd_sett, cryptonote::arg_testnet_on);
+  command_line::add_arg(desc_cmd_sett, cryptonote::arg_stagenet_on);
+  command_line::add_arg(desc_cmd_sett, arg_log_level);
+  command_line::add_arg(desc_cmd_sett, arg_block_start);
+  command_line::add_arg(desc_cmd_sett, arg_block_stop);
 
-    po::options_description desc_options("Allowed options");
-    desc_options.add(desc_cmd_only).add(desc_cmd_sett);
+  command_line::add_arg(desc_cmd_only, command_line::arg_help);
 
-    po::variables_map vm;
-    bool r = command_line::handle_error_helper(desc_options, [&]() {
-        po::store(po::parse_command_line(argc, argv, desc_options), vm);
-        po::notify(vm);
-        return true;
-    });
-    if (!r)
-        return 1;
+  po::options_description desc_options("Allowed options");
+  desc_options.add(desc_cmd_only).add(desc_cmd_sett);
 
-    if (command_line::get_arg(vm, command_line::arg_help))
-    {
-        std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
-        std::cout << desc_options << std::endl;
-        return 1;
-    }
+  po::variables_map vm;
+  bool r = command_line::handle_error_helper(desc_options, [&]()
+  {
+    po::store(po::parse_command_line(argc, argv, desc_options), vm);
+    po::notify(vm);
+    return true;
+  });
+  if (! r)
+    return 1;
 
-    mlog_configure(mlog_get_default_log_path("wazn-quicksync-export.log"), true);
-    if (!command_line::is_arg_defaulted(vm, arg_log_level))
-        mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
-    else
-        mlog_set_log(std::string(std::to_string(log_level) + ",bcutil:INFO").c_str());
+  if (command_line::get_arg(vm, command_line::arg_help))
+  {
+    std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << desc_options << std::endl;
+    return 1;
+  }
 
-    block_start = command_line::get_arg(vm, arg_block_start);
-    block_stop = command_line::get_arg(vm, arg_block_stop);
+  mlog_configure(mlog_get_default_log_path("wazn-quicksync-export.log"), true);
+  if (!command_line::is_arg_defaulted(vm, arg_log_level))
+    mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
+  else
+    mlog_set_log(std::string(std::to_string(log_level) + ",bcutil:INFO").c_str());
 
-    LOG_PRINT_L0("Starting...");
+  block_start = command_line::get_arg(vm, arg_block_start);
+  block_stop = command_line::get_arg(vm, arg_block_stop);
 
-    bool opt_testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
-    bool opt_stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
-    if (opt_testnet && opt_stagenet)
-    {
-        std::cerr << "Can't specify more than one of --testnet and --stagenet" << std::endl;
-        return 1;
-    }
+  LOG_PRINT_L0("Starting...");
 
-    std::string m_config_folder;
+  bool opt_testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
+  bool opt_stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
+  if (opt_testnet && opt_stagenet)
+  {
+    std::cerr << "Can't specify more than one of --testnet and --stagenet" << std::endl;
+    return 1;
+  }
 
-    m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
+  std::string m_config_folder;
 
-    if (command_line::has_arg(vm, arg_output_file))
-        output_file_path = boost::filesystem::path(command_line::get_arg(vm, arg_output_file));
-    else
-        output_file_path = boost::filesystem::path(m_config_folder) / "export" / DEFAULT_FILE_NAME;
+  m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
 
-    LOG_PRINT_L0("Export output file: " << output_file_path.string());
+  if (command_line::has_arg(vm, arg_output_file))
+    output_file_path = boost::filesystem::path(command_line::get_arg(vm, arg_output_file));
+  else
+    output_file_path = boost::filesystem::path(m_config_folder) / "export" / DEFAULT_FILE_NAME;
 
-    LOG_PRINT_L0("Initializing source blockchain (BlockchainDB)");
-    Blockchain *core_storage = NULL;
-    tx_memory_pool m_mempool(*core_storage);
-    core_storage = new Blockchain(m_mempool);
+  LOG_PRINT_L0("Export output file: " << output_file_path.string());
 
-    BlockchainDB *db = new_db();
+  LOG_PRINT_L0("Initializing source blockchain (BlockchainDB)");
+  Blockchain* core_storage = NULL;
+  tx_memory_pool m_mempool(*core_storage);
+  core_storage = new Blockchain(m_mempool);
 
-    boost::filesystem::path folder(m_config_folder);
-    folder /= db->get_db_name();
-    const std::string filename = folder.string();
+  BlockchainDB* db = new_db();
 
-    LOG_PRINT_L0("Loading blockchain from folder " << filename << " ...");
-    try
-    {
-        db->open(filename, DBF_RDONLY);
-    }
-    catch (const std::exception &e)
-    {
-        LOG_PRINT_L0("Error opening database: " << e.what());
-        return 1;
-    }
-    r = core_storage->init(db, opt_testnet ? cryptonote::TESTNET : opt_stagenet ? cryptonote::STAGENET : cryptonote::MAINNET);
+  boost::filesystem::path folder(m_config_folder);
+  folder /= db->get_db_name();
+  const std::string filename = folder.string();
 
-    CHECK_AND_ASSERT_MES(r, 1, "Failed to initialize source blockchain storage");
-    LOG_PRINT_L0("Source blockchain storage initialized OK");
-    LOG_PRINT_L0("Exporting quick sync data...");
+  LOG_PRINT_L0("Loading blockchain from folder " << filename << " ...");
+  try
+  {
+    db->open(filename, DBF_RDONLY);
+  }
+  catch (const std::exception& e)
+  {
+    LOG_PRINT_L0("Error opening database: " << e.what());
+    return 1;
+  }
+  r = core_storage->init(db, opt_testnet ? cryptonote::TESTNET : opt_stagenet ? cryptonote::STAGENET : cryptonote::MAINNET);
 
-    QuickSyncFile bootstrap;
-    r = bootstrap.store_blockchain(core_storage, output_file_path, block_start, block_stop);
+  CHECK_AND_ASSERT_MES(r, 1, "Failed to initialize source blockchain storage");
+  LOG_PRINT_L0("Source blockchain storage initialized OK");
+  LOG_PRINT_L0("Exporting quick sync data...");
 
-    CHECK_AND_ASSERT_MES(r, 1, "Failed to export quick sync data");
-    LOG_PRINT_L0("Export OK");
-    return 0;
+  QuickSyncFile bootstrap;
+  r = bootstrap.store_blockchain(core_storage, output_file_path, block_start, block_stop);
 
-    CATCH_ENTRY("Export error", 1);
+  CHECK_AND_ASSERT_MES(r, 1, "Failed to export quick sync data");
+  LOG_PRINT_L0("Export OK");
+  return 0;
+
+  CATCH_ENTRY("Export error", 1);
 }

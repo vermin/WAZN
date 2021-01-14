@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -35,8 +35,7 @@
 
 //DISABLE_VS_WARNINGS(4146 4244)
 
-void sc_reduce32copy(unsigned char *scopy, const unsigned char *s)
-{
+void sc_reduce32copy(unsigned char * scopy, const unsigned char *s) {
     int64_t s0 = 2097151 & load_3(s);
     int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
     int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
@@ -63,41 +62,41 @@ void sc_reduce32copy(unsigned char *scopy, const unsigned char *s)
     int64_t carry10;
     int64_t carry11;
 
-    carry0 = (s0 + (1 << 20)) >> 21;
+    carry0 = (s0 + (1<<20)) >> 21;
     s1 += carry0;
     s0 -= carry0 << 21;
-    carry2 = (s2 + (1 << 20)) >> 21;
+    carry2 = (s2 + (1<<20)) >> 21;
     s3 += carry2;
     s2 -= carry2 << 21;
-    carry4 = (s4 + (1 << 20)) >> 21;
+    carry4 = (s4 + (1<<20)) >> 21;
     s5 += carry4;
     s4 -= carry4 << 21;
-    carry6 = (s6 + (1 << 20)) >> 21;
+    carry6 = (s6 + (1<<20)) >> 21;
     s7 += carry6;
     s6 -= carry6 << 21;
-    carry8 = (s8 + (1 << 20)) >> 21;
+    carry8 = (s8 + (1<<20)) >> 21;
     s9 += carry8;
     s8 -= carry8 << 21;
-    carry10 = (s10 + (1 << 20)) >> 21;
+    carry10 = (s10 + (1<<20)) >> 21;
     s11 += carry10;
     s10 -= carry10 << 21;
 
-    carry1 = (s1 + (1 << 20)) >> 21;
+    carry1 = (s1 + (1<<20)) >> 21;
     s2 += carry1;
     s1 -= carry1 << 21;
-    carry3 = (s3 + (1 << 20)) >> 21;
+    carry3 = (s3 + (1<<20)) >> 21;
     s4 += carry3;
     s3 -= carry3 << 21;
-    carry5 = (s5 + (1 << 20)) >> 21;
+    carry5 = (s5 + (1<<20)) >> 21;
     s6 += carry5;
     s5 -= carry5 << 21;
-    carry7 = (s7 + (1 << 20)) >> 21;
+    carry7 = (s7 + (1<<20)) >> 21;
     s8 += carry7;
     s7 -= carry7 << 21;
-    carry9 = (s9 + (1 << 20)) >> 21;
+    carry9 = (s9 + (1<<20)) >> 21;
     s10 += carry9;
     s9 -= carry9 << 21;
-    carry11 = (s11 + (1 << 20)) >> 21;
+    carry11 = (s11 + (1<<20)) >> 21;
     s12 += carry11;
     s11 -= carry11 << 21;
 

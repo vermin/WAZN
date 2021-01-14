@@ -53,4 +53,4 @@ namespace cryptonote
         uint32_t m_min = 0;
         uint32_t m_max = 0;
     };
-} // namespace cryptonote
+}

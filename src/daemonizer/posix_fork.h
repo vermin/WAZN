@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -31,10 +31,9 @@
 
 #ifndef WIN32
 
-namespace posix
-{
+namespace posix {
 
-    void fork(const std::string &pidfile);
+void fork(const std::string & pidfile);
 
 }
 

@@ -35,11 +35,10 @@ namespace
     struct net_category : std::error_category
     {
         net_category() noexcept
-            : std::error_category()
-        {
-        }
+          : std::error_category()
+        {}
 
-        const char *name() const noexcept override
+        const char* name() const noexcept override
         {
             return "net::error_category";
         }
@@ -81,13 +80,13 @@ namespace
             return std::error_condition{value, *this};
         }
     };
-} // namespace
+} // anonymous
 
 namespace net
 {
-    std::error_category const &error_category() noexcept
+    std::error_category const& error_category() noexcept
     {
         static const net_category instance{};
         return instance;
     }
-} // namespace net
+}

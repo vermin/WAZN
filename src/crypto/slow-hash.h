@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018, The NERVA Project
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2019, The NERVA Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -51,26 +51,26 @@ extern void aesb_single_round(const uint8_t *in, uint8_t *out, const uint8_t *ex
 extern void aesb_pseudo_round(const uint8_t *in, uint8_t *out, const uint8_t *expandedKey);
 
 #if defined(_MSC_VER)
-#include <windows.h>
-#define STATIC
-#define INLINE __inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __declspec(align(16))
-#endif
+  #include <windows.h>
+  #define STATIC
+  #define INLINE __inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __declspec(align(16))
+  #endif
 #elif defined(__MINGW32__)
-#include <windows.h>
-#define STATIC static
-#define INLINE inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __attribute__((aligned(16)))
-#endif
+  #include <windows.h>
+  #define STATIC static
+  #define INLINE inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __attribute__((aligned(16)))
+  #endif
 #else
-#include <sys/mman.h>
-#define STATIC static
-#define INLINE inline
-#if !defined(RDATA_ALIGN16)
-#define RDATA_ALIGN16 __attribute__((aligned(16)))
-#endif
+  #include <sys/mman.h>
+  #define STATIC static
+  #define INLINE inline
+  #if !defined(RDATA_ALIGN16)
+    #define RDATA_ALIGN16 __attribute__((aligned(16)))
+  #endif
 #endif
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -115,40 +115,77 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
 #define VARIANT1_2(p) \
     xor64(p, tweak1_2);
 
-#define salt_pad(salt, salt_hash, a, b, c, d)                   \
-    extra_hashes[a % 3](salt, 200, salt_hash);                  \
-    temp_1 = (uint16_t)(iters ^ (b ^ c));                       \
-    offset_1 = temp_1 * ((d % 3) + 1);                          \
-    for (j = 0; j < 32; j++)                                    \
-        (salt)[offset_1 + j] ^= (salt_hash)[j];                 \
-    x = 0;                                                      \
-    offset_1 = (d % 64) + 1;                                    \
-    offset_2 = ((temp_1 * offset_1) % 125) + 4;                 \
-    for (j = offset_1; j < CN_SCRATCHPAD_MEMORY; j += offset_2) \
+#define salt_pad(salt, salt_hash, a, b, c, d)          \
+    extra_hashes[a % 3](salt, 200, salt_hash);         \
+    temp_1 = (uint16_t)(iters ^ (b ^ c));              \
+    offset_1 = temp_1 * ((d % 3) + 1);                 \
+    for (j = 0; j < 32; j++)                           \
+        (salt)[offset_1 + j] ^= (salt_hash)[j];        \
+    x = 0;                                             \
+    offset_1 = (d % 64) + 1;                           \
+    offset_2 = ((temp_1 * offset_1) % 125) + 4;        \
+    for (j = offset_1; j < CN_SCRATCHPAD_MEMORY; j += offset_2)      \
         hp_state[j] ^= (salt)[x++];
 
-#define randomize_scratchpad(salt, scratchpad)             \
+#define randomize_scratchpad(r, scratchpad)            \
+    for (int i = 0; i < CN_RANDOM_VALUES; i++)         \
+    {                                                  \
+        switch ((r).operators[i])                       \
+        {                                              \
+        case ADD:                                      \
+            scratchpad[(r).indices[i]] += (r).values[i]; \
+            break;                                     \
+        case SUB:                                      \
+            scratchpad[(r).indices[i]] -= (r).values[i]; \
+            break;                                     \
+        case XOR:                                      \
+            scratchpad[(r).indices[i]] ^= (r).values[i]; \
+            break;                                     \
+        case OR:                                       \
+            scratchpad[(r).indices[i]] |= (r).values[i]; \
+            break;                                     \
+        case AND:                                      \
+            scratchpad[(r).indices[i]] &= (r).values[i]; \
+            break;                                     \
+        case COMP:                                     \
+            scratchpad[(r).indices[i]] = ~(r).values[i]; \
+            break;                                     \
+        case EQ:                                       \
+            scratchpad[(r).indices[i]] = (r).values[i];  \
+            break;                                     \
+        }                                              \
+    }
+
+#define randomize_scratchpad_256k(r, salt, scratchpad)     \
     uint32_t x = 0;                                        \
     for (uint32_t i = 0; i < CN_SCRATCHPAD_MEMORY; i += 4) \
-        scratchpad[i] ^= salt[x++];
+        scratchpad[i] ^= salt[x++];                        \
+    randomize_scratchpad(r, scratchpad);
+
+#define randomize_scratchpad_4k(r, salt, scratchpad)         \
+    uint32_t x = 0;                                          \
+    for (uint32_t i = 0; i < CN_SCRATCHPAD_MEMORY; i += 256) \
+        scratchpad[i] ^= salt[x++];                          \
+    randomize_scratchpad(r, scratchpad);
+
 
 #if !defined(NO_AES) && (defined(__x86_64__) || (defined(_MSC_VER) && defined(_WIN64)))
 
 #include <emmintrin.h>
 #if defined(_MSC_VER)
-#include <intrin.h>
+  #include <intrin.h>
 #elif defined(__MINGW32__)
-#include <intrin.h>
+  #include <intrin.h>
 #else
-#include <wmmintrin.h>
+  #include <wmmintrin.h>
 #endif
 
 #if defined(__INTEL_COMPILER)
-#define ASM __asm__
+  #define ASM __asm__
 #elif !defined(_MSC_VER)
-#define ASM __asm__
+  #define ASM __asm__
 #else
-#define ASM __asm
+  #define ASM __asm
 #endif
 
 #define U64(x) ((uint64_t *)(x))
@@ -156,26 +193,44 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
 
 #define state_index(x) (((*((uint64_t *)x) >> 4) & ((CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) - 1)) << 4)
 #if defined(_MSC_VER)
-#if !defined(_WIN64)
-#define __mul() lo = mul128(c[0], b[0], &hi);
+  #if !defined(_WIN64)
+    #define __mul() lo = mul128(c[0], b[0], &hi);
+  #else
+    #define __mul() lo = _umul128(c[0], b[0], &hi);
+  #endif
 #else
-#define __mul() lo = _umul128(c[0], b[0], &hi);
-#endif
-#else
-#if defined(__x86_64__)
-#define __mul() ASM("mulq %3\n\t"            \
-                    : "=d"(hi), "=a"(lo)     \
-                    : "%a"(c[0]), "rm"(b[0]) \
-                    : "cc");
-#else
-#define __mul() lo = mul128(c[0], b[0], &hi);
-#endif
+  #if defined(__x86_64__)
+    #define __mul() ASM("mulq %3\n\t" \
+      : "=d"(hi), "=a"(lo)     \
+      : "%a"(c[0]), "rm"(b[0]) \
+      : "cc");
+  #else
+    #define __mul() lo = mul128(c[0], b[0], &hi);
+  #endif
 #endif
 
 #define pre_aes()                            \
     j = state_index(a);                      \
     _c = _mm_load_si128(R128(&hp_state[j])); \
     _a = _mm_load_si128(R128(a));
+
+#define post_aes_novariant()                 \
+    _mm_store_si128(R128(c), _c);            \
+    _b = _mm_xor_si128(_b, _c);              \
+    _mm_store_si128(R128(&hp_state[j]), _b); \
+    j = state_index(c);                      \
+    p = U64(&hp_state[j]);                   \
+    b[0] = p[0];                             \
+    b[1] = p[1];                             \
+    __mul();                                 \
+    a[0] += hi;                              \
+    a[1] += lo;                              \
+    p = U64(&hp_state[j]);                   \
+    p[0] = a[0];                             \
+    p[1] = a[1];                             \
+    a[0] ^= b[0];                            \
+    a[1] ^= b[1];                            \
+    _b = _c;
 
 #define post_aes_variant()                   \
     _mm_store_si128(R128(c), _c);            \
@@ -197,30 +252,26 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
     VARIANT1_2(p + 1);                       \
     _b = _c;
 
-#define init_hash()                                                        \
-    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);            \
-    RDATA_ALIGN16 uint8_t expandedKey[240];                                \
-    uint8_t *text = (uint8_t *)malloc(init_size_byte);                     \
-    RDATA_ALIGN16 uint64_t a[2];                                           \
-    RDATA_ALIGN16 uint64_t b[4];                                           \
-    RDATA_ALIGN16 uint64_t c[2];                                           \
-    union cn_slow_hash_state state;                                        \
-    __m128i _a, _b, _c;                                                    \
-    uint64_t hi, lo;                                                       \
-    size_t i, j;                                                           \
-    uint64_t *p = NULL;                                                    \
-    static void (*const extra_hashes[4])(const void *, size_t, char *) = { \
-        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};
+#define init_hash()                                                             \
+    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);                 \
+    RDATA_ALIGN16 uint8_t expandedKey[240];                                     \
+    uint8_t *text = (uint8_t *)malloc(init_size_byte);                          \
+    RDATA_ALIGN16 uint64_t a[2];                                                \
+    RDATA_ALIGN16 uint64_t b[4];                                                \
+    RDATA_ALIGN16 uint64_t c[2];                                                \
+    union cn_slow_hash_state state;                                             \
+    __m128i _a, _b, _c;                                                         \
+    uint64_t hi, lo;                                                            \
+    size_t i, j;                                                                \
+    uint64_t *p = NULL;                                                         \
+    static void (*const extra_hashes[4])(const void *, size_t, char *) = {      \
+        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein}; \
 
-#define xor_u64()                                      \
-    U64(a)                                             \
-    [0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];  \
-    U64(a)                                             \
-    [1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];  \
-    U64(b)                                             \
-    [0] = U64(&state.k[16])[0] ^ U64(&state.k[48])[0]; \
-    U64(b)                                             \
-    [1] = U64(&state.k[16])[1] ^ U64(&state.k[48])[1];
+#define xor_u64()                                            \
+    U64(a)[0] = U64(&state.k[0])[0] ^ U64(&state.k[32])[0];  \
+    U64(a)[1] = U64(&state.k[0])[1] ^ U64(&state.k[32])[1];  \
+    U64(b)[0] = U64(&state.k[16])[0] ^ U64(&state.k[48])[0]; \
+    U64(b)[1] = U64(&state.k[16])[1] ^ U64(&state.k[48])[1];
 
 #define expand_key()                                                                   \
     hash_process(&state.hs, data, length);                                             \
@@ -247,10 +298,8 @@ BOOL SetLockPagesPrivilege(HANDLE hProcess, BOOL bEnable)
 
 STATIC INLINE void xor_blocks(uint8_t *a, const uint8_t *b)
 {
-    U64(a)
-    [0] ^= U64(b)[0];
-    U64(a)
-    [1] ^= U64(b)[1];
+    U64(a)[0] ^= U64(b)[0];
+    U64(a)[1] ^= U64(b)[1];
 }
 
 STATIC INLINE void xor64(uint64_t *a, const uint64_t b)
@@ -377,10 +426,7 @@ STATIC INLINE void aes_pseudo_round_xor(const uint8_t *in, uint8_t *out, const u
 
 #define CN_USE_SOFTWARE_AES 1
 
-STATIC size_t e2i(const uint8_t *a, size_t count)
-{
-    return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1);
-}
+STATIC size_t e2i(const uint8_t *a, size_t count) { return (*((uint64_t *)a) / AES_BLOCK_SIZE) & (count - 1); }
 
 STATIC void mul(const uint8_t *a, const uint8_t *b, uint8_t *res)
 {
@@ -418,18 +464,12 @@ STATIC void copy_block(uint8_t *dst, const uint8_t *src)
 STATIC void swap_blocks(uint8_t *a, uint8_t *b)
 {
     uint64_t t[2];
-    U64(t)
-    [0] = U64(a)[0];
-    U64(t)
-    [1] = U64(a)[1];
-    U64(a)
-    [0] = U64(b)[0];
-    U64(a)
-    [1] = U64(b)[1];
-    U64(b)
-    [0] = U64(t)[0];
-    U64(b)
-    [1] = U64(t)[1];
+    U64(t)[0] = U64(a)[0];
+    U64(t)[1] = U64(a)[1];
+    U64(a)[0] = U64(b)[0];
+    U64(a)[1] = U64(b)[1];
+    U64(b)[0] = U64(t)[0];
+    U64(b)[1] = U64(t)[1];
 }
 
 STATIC void xor_blocks(uint8_t *a, const uint8_t *b)
@@ -446,39 +486,56 @@ STATIC void xor64(uint8_t *left, const uint8_t *right)
         left[i] ^= right[i];
 }
 
-#define aes_sw_variant()                                                 \
+#define aes_sw_variant()                                   \
     j = e2i(a, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
-    copy_block(c1, &hp_state[j]);                                        \
-    aesb_single_round(c1, c1, a);                                        \
-    copy_block(&hp_state[j], c1);                                        \
-    xor_blocks(&hp_state[j], b);                                         \
-    VARIANT1_1(&hp_state[j]);                                            \
+    copy_block(c1, &hp_state[j]);                          \
+    aesb_single_round(c1, c1, a);                          \
+    copy_block(&hp_state[j], c1);                          \
+    xor_blocks(&hp_state[j], b);                           \
+    VARIANT1_1(&hp_state[j]);                              \
     j = e2i(c1, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
-    copy_block(c2, &hp_state[j]);                                        \
-    mul(c1, c2, d);                                                      \
-    swap_blocks(a, c1);                                                  \
-    sum_half_blocks(c1, d);                                              \
-    swap_blocks(c1, c2);                                                 \
-    xor_blocks(c1, c2);                                                  \
-    VARIANT1_2(c2 + 8);                                                  \
-    copy_block(&hp_state[j], c2);                                        \
-    copy_block(b, a);                                                    \
+    copy_block(c2, &hp_state[j]);                          \
+    mul(c1, c2, d);                                        \
+    swap_blocks(a, c1);                                    \
+    sum_half_blocks(c1, d);                                \
+    swap_blocks(c1, c2);                                   \
+    xor_blocks(c1, c2);                                    \
+    VARIANT1_2(c2 + 8);                                    \
+    copy_block(&hp_state[j], c2);                          \
+    copy_block(b, a);                                      \
     copy_block(a, c1);
 
-#define init_hash()                                                        \
-    union cn_slow_hash_state state;                                        \
-    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);            \
-    uint8_t *text = (uint8_t *)malloc(init_size_byte);                     \
-    uint8_t a[AES_BLOCK_SIZE];                                             \
-    uint8_t b[AES_BLOCK_SIZE];                                             \
-    uint8_t c1[AES_BLOCK_SIZE];                                            \
-    uint8_t c2[AES_BLOCK_SIZE];                                            \
-    uint8_t d[AES_BLOCK_SIZE];                                             \
-    size_t i, j;                                                           \
-    uint8_t aes_key[AES_KEY_SIZE];                                         \
-    oaes_ctx *const aes_ctx = (oaes_ctx *)context->oaes_ctx;               \
-    static void (*const extra_hashes[4])(const void *, size_t, char *) = { \
-        hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};
+#define aes_sw_novariant()                                 \
+    j = e2i(a, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE;  \
+    copy_block(c1, &hp_state[j]);                          \
+    aesb_single_round(c1, c1, a);                          \
+    copy_block(&hp_state[j], c1);                          \
+    xor_blocks(&hp_state[j], b);                           \
+    j = e2i(c1, CN_SCRATCHPAD_MEMORY / AES_BLOCK_SIZE) * AES_BLOCK_SIZE; \
+    copy_block(c2, &hp_state[j]);                          \
+    mul(c1, c2, d);                                        \
+    swap_blocks(a, c1);                                    \
+    sum_half_blocks(c1, d);                                \
+    swap_blocks(c1, c2);                                   \
+    xor_blocks(c1, c2);                                    \
+    copy_block(&hp_state[j], c2);                          \
+    copy_block(b, a);                                      \
+    copy_block(a, c1);
+
+#define init_hash()                                                                                          \
+    union cn_slow_hash_state state;                                                                          \
+    uint32_t init_size_byte = (init_size_blk * AES_BLOCK_SIZE);                                              \
+    uint8_t *text = (uint8_t *)malloc(init_size_byte);                                                       \
+    uint8_t a[AES_BLOCK_SIZE];                                                                               \
+    uint8_t b[AES_BLOCK_SIZE];                                                                               \
+    uint8_t c1[AES_BLOCK_SIZE];                                                                              \
+    uint8_t c2[AES_BLOCK_SIZE];                                                                              \
+    uint8_t d[AES_BLOCK_SIZE];                                                                               \
+    size_t i, j;                                                                                             \
+    uint8_t aes_key[AES_KEY_SIZE];                                                                           \
+    oaes_ctx * const aes_ctx = (oaes_ctx *)context->oaes_ctx;                                                \
+    static void (*const extra_hashes[4])(const void *, size_t, char *) = {                                   \
+    hash_extra_blake, hash_extra_groestl, hash_extra_jh, hash_extra_skein};                                  \
 
 #define expand_key()                                                                                         \
     hash_process(&state.hs, data, length);                                                                   \

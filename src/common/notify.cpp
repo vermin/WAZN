@@ -1,21 +1,21 @@
 // Copyright (c) 2018, The Monero Project
-//
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -39,45 +39,45 @@
 namespace tools
 {
 
-    /*
+/*
   TODO: 
   - Improve tokenization to handle paths containing whitespaces, quotes, etc.
   - Windows unicode support (implies implementing unicode command line parsing code)
 */
-    Notify::Notify(const char *spec)
-    {
-        CHECK_AND_ASSERT_THROW_MES(spec, "Null spec");
+Notify::Notify(const char *spec)
+{
+  CHECK_AND_ASSERT_THROW_MES(spec, "Null spec");
 
-        boost::split(args, spec, boost::is_any_of(" \t"), boost::token_compress_on);
-        CHECK_AND_ASSERT_THROW_MES(args.size() > 0, "Failed to parse spec");
-        if (strchr(spec, '\'') || strchr(spec, '\"') || strchr(spec, '\\'))
-            MWARNING("A notification spec contains a quote or backslash: note that these are handled verbatim, which may not be the intent");
-        filename = args[0];
-        CHECK_AND_ASSERT_THROW_MES(epee::file_io_utils::is_file_exist(filename), "File not found: " << filename);
-    }
+  boost::split(args, spec, boost::is_any_of(" \t"), boost::token_compress_on);
+  CHECK_AND_ASSERT_THROW_MES(args.size() > 0, "Failed to parse spec");
+  if (strchr(spec, '\'') || strchr(spec, '\"') || strchr(spec, '\\'))
+    MWARNING("A notification spec contains a quote or backslash: note that these are handled verbatim, which may not be the intent");
+  filename = args[0];
+  CHECK_AND_ASSERT_THROW_MES(epee::file_io_utils::is_file_exist(filename), "File not found: " << filename);
+}
 
-    static void replace(std::vector<std::string> &v, const char *tag, const char *s)
-    {
-        for (std::string &str : v)
-            boost::replace_all(str, tag, s);
-    }
+static void replace(std::vector<std::string> &v, const char *tag, const char *s)
+{
+  for (std::string &str: v)
+    boost::replace_all(str, tag, s);
+}
 
-    int Notify::notify(const char *tag, const char *s, ...) const
-    {
-        std::vector<std::string> margs = args;
+int Notify::notify(const char *tag, const char *s, ...)
+{
+  std::vector<std::string> margs = args;
 
-        replace(margs, tag, s);
+  replace(margs, tag, s);
 
-        va_list ap;
-        va_start(ap, s);
-        while ((tag = va_arg(ap, const char *)))
-        {
-            s = va_arg(ap, const char *);
-            replace(margs, tag, s);
-        }
-        va_end(ap);
+  va_list ap;
+  va_start(ap, s);
+  while ((tag = va_arg(ap, const char*)))
+  {
+    s = va_arg(ap, const char*);
+    replace(margs, tag, s);
+  }
+  va_end(ap);
 
-        return tools::spawn(filename.c_str(), margs, false);
-    }
+  return tools::spawn(filename.c_str(), margs, false);
+}
 
-} // namespace tools
+}

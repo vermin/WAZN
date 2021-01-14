@@ -40,67 +40,67 @@
 
 namespace tools
 {
-    bool check_updates(const cryptonote::network_type nettype, const std::string &software, std::string &version, std::string &codename, std::string &notice)
+  bool check_updates(const cryptonote::network_type nettype, const std::string &software, std::string &version, std::string &codename, std::string &notice)
+  {
+    bool found = false;
+
+    dns_config::init(nettype == cryptonote::TESTNET);
+
+    if (!dns_config::has_update_records())
+      return false;
+
+    std::vector<std::string> records = dns_config::get_update_records();
+
+    for (const auto& record : records)
     {
-        bool found = false;
+      std::vector<std::string> fields;
+      boost::split(fields, record, boost::is_any_of(":"));
+      if (fields.size() != 4)
+      {
+        MWARNING("Update record does not have 4 fields: " << record);
+        continue;
+      }
 
-        dns_config::init(nettype == cryptonote::TESTNET);
+      if (software != fields[0])
+        continue;
 
-        if (!dns_config::has_update_records())
-            return false;
+      // use highest version
+      if (found)
+      {
+        int cmp = vercmp(version.c_str(), fields[1].c_str());
+        if (cmp > 0)
+          continue;
+      }
 
-        std::vector<std::string> records = dns_config::get_update_records();
+      version = fields[1];
+      codename = fields[2];
+      notice = fields[3];
 
-        for (const auto &record : records)
-        {
-            std::vector<std::string> fields;
-            boost::split(fields, record, boost::is_any_of(":"));
-            if (fields.size() != 4)
-            {
-                MWARNING("Update record does not have 4 fields: " << record);
-                continue;
-            }
+      LOG_PRINT_L1("Found new version " << version << ":" << codename);
+      found = true;
+    }
+    return found;
+  }
 
-            if (software != fields[0])
-                continue;
+  std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version)
+  {
+    std::vector<std::string> records = dns_config::get_download_records();
 
-            // use highest version
-            if (found)
-            {
-                int cmp = vercmp(version.c_str(), fields[1].c_str());
-                if (cmp > 0)
-                    continue;
-            }
+    std::string key;
+    std::string value;
 
-            version = fields[1];
-            codename = fields[2];
-            notice = fields[3];
-
-            LOG_PRINT_L1("Found new version " << version << ":" << codename);
-            found = true;
-        }
-        return found;
+    for (const auto& record : records)
+    {
+      const auto idx = record.find_first_of(':');
+      if (idx != std::string::npos)
+      {
+        key = record.substr(0, idx);
+        value = record.substr(idx + 1);
+        if (buildtag == key)
+          return value;
+      }
     }
 
-    std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version)
-    {
-        std::vector<std::string> records = dns_config::get_download_records();
-
-        std::string key;
-        std::string value;
-
-        for (const auto &record : records)
-        {
-            const auto idx = record.find_first_of(':');
-            if (idx != std::string::npos)
-            {
-                key = record.substr(0, idx);
-                value = record.substr(idx + 1);
-                if (buildtag == key)
-                    return value;
-            }
-        }
-
-        return "Link not available";
-    }
-} // namespace tools
+    return "Link not available";
+  }
+}

@@ -1,21 +1,21 @@
-// Copyright (c) 2014-2020, The Monero Project
-//
+// Copyright (c) 2014-2019, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -38,32 +38,36 @@
 
 namespace daemonize
 {
-    class t_executor final
+  class t_executor final
+  {
+  public:
+    typedef ::daemonize::t_daemon t_daemon;
+
+    static std::string const NAME;
+
+    t_executor(uint16_t public_rpc_port = 0) : public_rpc_port(public_rpc_port)
     {
-    public:
-        typedef ::daemonize::t_daemon t_daemon;
+    }
 
-        static std::string const NAME;
+    static void init_options(
+        boost::program_options::options_description & configurable_options
+      );
 
-        t_executor(uint16_t public_rpc_port = 0) : public_rpc_port(public_rpc_port)
-        {
-        }
+    std::string const & name();
 
-        static void init_options(
-            boost::program_options::options_description &configurable_options);
+    t_daemon create_daemon(
+        boost::program_options::variables_map const & vm
+      );
 
-        std::string const &name();
+    bool run_non_interactive(
+        boost::program_options::variables_map const & vm
+      );
 
-        t_daemon create_daemon(
-            boost::program_options::variables_map const &vm);
+    bool run_interactive(
+        boost::program_options::variables_map const & vm
+      );
 
-        bool run_non_interactive(
-            boost::program_options::variables_map const &vm);
-
-        bool run_interactive(
-            boost::program_options::variables_map const &vm);
-
-    private:
-        uint16_t public_rpc_port;
-    };
-} // namespace daemonize
+  private:
+    uint16_t public_rpc_port;
+  };
+}

@@ -19,7 +19,7 @@ namespace waznhttp
         std::string host = ip.substr(0, found);
         return host;
     }
-} // namespace waznhttp
+}
 
 namespace blacklist
 {
@@ -30,11 +30,11 @@ namespace blacklist
     size_t curl_write_callback(void *ptr, size_t size, size_t count, void *stream)
     {
         size_t sz = size * count;
-        ((std::string *)stream)->append((char *)ptr, 0, sz);
+        ((std::string*)stream)->append((char*)ptr, 0, sz);
         return sz;
     }
 
-    std::vector<std::string> split_string(const std::string &str, const std::string &delimiter)
+    std::vector<std::string> split_string(const std::string& str, const std::string& delimiter)
     {
         std::vector<std::string> strings;
 
@@ -63,8 +63,8 @@ namespace blacklist
         {
             std::string url = "http://" + a + "/wazn_blacklist.txt";
 
-            CURL *curl = curl_easy_init();
-            if (curl)
+            CURL* curl = curl_easy_init();
+            if(curl)
             {
                 curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write_callback);
@@ -80,7 +80,7 @@ namespace blacklist
 
         ip_list = split_string(m_read_buffer, "\n");
     }
-} // namespace blacklist
+}
 
 namespace analytics
 {
@@ -105,8 +105,8 @@ namespace analytics
             std::string user_agent = "wazn-cli/";
             user_agent.append(MONERO_VERSION);
 
-            CURL *curl = curl_easy_init();
-            if (curl)
+            CURL* curl = curl_easy_init();
+            if(curl)
             {
                 curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
                 curl_easy_setopt(curl, CURLOPT_FAILONERROR, true);
@@ -126,4 +126,4 @@ namespace analytics
         MGINFO("Sending analytics failed");
         return false;
     }
-} // namespace analytics
+}

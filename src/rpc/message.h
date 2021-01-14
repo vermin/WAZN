@@ -1,21 +1,21 @@
-// Copyright (c) 2016-2020, The Monero Project
-//
+// Copyright (c) 2016-2019, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -28,83 +28,104 @@
 
 #pragma once
 
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
+#include "rapidjson/document.h"
+#include "rpc/message_data_structs.h"
 #include <string>
 
-#include "byte_slice.h"
-#include "byte_stream.h"
-#include "rpc/message_data_structs.h"
+/* I normally hate using macros, but in this case it would be untenably
+ * verbose to not use a macro.  This macro saves the trouble of explicitly
+ * writing the below if block for every single RPC call.
+ */
+#define REQ_RESP_TYPES_MACRO( runtime_str, type, reqjson, resp_message_ptr, handler) \
+  \
+  if (runtime_str == type::name) \
+  { \
+    type::Request reqvar; \
+    type::Response *respvar = new type::Response(); \
+    \
+    reqvar.fromJson(reqjson); \
+    \
+    handler(reqvar, *respvar); \
+    \
+    resp_message_ptr = respvar; \
+  }
 
 namespace cryptonote
 {
 
-    namespace rpc
-    {
+namespace rpc
+{
 
-        class Message
-        {
-            virtual void doToJson(rapidjson::Writer<epee::byte_stream> &dest) const
-            {
-            }
+  class Message
+  {
+    public:
+      static const char* STATUS_OK;
+      static const char* STATUS_RETRY;
+      static const char* STATUS_FAILED;
+      static const char* STATUS_BAD_REQUEST;
+      static const char* STATUS_BAD_JSON;
 
-        public:
-            static const char *STATUS_OK;
-            static const char *STATUS_RETRY;
-            static const char *STATUS_FAILED;
-            static const char *STATUS_BAD_REQUEST;
-            static const char *STATUS_BAD_JSON;
+      Message() : status(STATUS_OK), rpc_version(0) { }
 
-            Message() : status(STATUS_OK) {}
+      virtual ~Message() { }
 
-            virtual ~Message() {}
+      virtual rapidjson::Value toJson(rapidjson::Document& doc) const;
 
-            void toJson(rapidjson::Writer<epee::byte_stream> &dest) const;
+      virtual void fromJson(rapidjson::Value& val);
 
-            virtual void fromJson(const rapidjson::Value &val);
+      std::string status;
+      std::string error_details;
+      uint32_t rpc_version;
+  };
 
-            std::string status;
-            std::string error_details;
-        };
+  class FullMessage
+  {
+    public:
+      ~FullMessage() { }
 
-        class FullMessage
-        {
-        public:
-            ~FullMessage() {}
+      FullMessage(FullMessage&& rhs) noexcept : doc(std::move(rhs.doc)) { }
 
-            FullMessage(std::string &&json_string, bool request = false);
+      FullMessage(const std::string& json_string, bool request=false);
 
-            std::string getRequestType() const;
+      std::string getJson();
 
-            const rapidjson::Value &getMessage() const;
+      std::string getRequestType() const;
 
-            rapidjson::Value getMessageCopy();
+      rapidjson::Value& getMessage();
 
-            const rapidjson::Value &getID() const;
+      rapidjson::Value getMessageCopy();
 
-            cryptonote::rpc::error getError();
+      rapidjson::Value& getID();
 
-            static epee::byte_slice getRequest(const std::string &request, const Message &message, unsigned id);
-            static epee::byte_slice getResponse(const Message &message, const rapidjson::Value &id);
+      void setID(rapidjson::Value& id);
 
-        private:
-            FullMessage() = default;
-            FullMessage(const FullMessage &) = delete;
-            FullMessage &operator=(const FullMessage &) = delete;
+      cryptonote::rpc::error getError();
 
-            FullMessage(const std::string &request, Message *message);
-            FullMessage(Message *message);
+      static FullMessage requestMessage(const std::string& request, Message* message);
+      static FullMessage requestMessage(const std::string& request, Message* message, rapidjson::Value& id);
 
-            std::string contents;
-            rapidjson::Document doc;
-        };
+      static FullMessage responseMessage(Message* message);
+      static FullMessage responseMessage(Message* message, rapidjson::Value& id);
 
-        // convenience functions for bad input
-        epee::byte_slice BAD_REQUEST(const std::string &request);
-        epee::byte_slice BAD_REQUEST(const std::string &request, const rapidjson::Value &id);
+      static FullMessage* timeoutMessage();
+    private:
 
-        epee::byte_slice BAD_JSON(const std::string &error_details);
+      FullMessage() = default;
 
-    } // namespace rpc
+      FullMessage(const std::string& request, Message* message);
+      FullMessage(Message* message);
 
-} // namespace cryptonote
+      rapidjson::Document doc;
+  };
+
+
+  // convenience functions for bad input
+  std::string BAD_REQUEST(const std::string& request);
+  std::string BAD_REQUEST(const std::string& request, rapidjson::Value& id);
+
+  std::string BAD_JSON(const std::string& error_details);
+
+
+}  // namespace rpc
+
+}  // namespace cryptonote

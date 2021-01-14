@@ -36,7 +36,7 @@ namespace lmdb
 {
     namespace stream
     {
-        mdb_size_t count(MDB_cursor *cur)
+        mdb_size_t count(MDB_cursor* cur)
         {
             mdb_size_t out = 0;
             if (cur)
@@ -49,7 +49,7 @@ namespace lmdb
         }
 
         std::pair<epee::span<const std::uint8_t>, epee::span<const std::uint8_t>>
-        get(MDB_cursor &cur, MDB_cursor_op op, std::size_t key, std::size_t value)
+        get(MDB_cursor& cur, MDB_cursor_op op, std::size_t key, std::size_t value)
         {
             MDB_val key_bytes{};
             MDB_val value_bytes{};
@@ -69,5 +69,6 @@ namespace lmdb
 
             return {lmdb::to_byte_span(key_bytes), lmdb::to_byte_span(value_bytes)};
         }
-    } // namespace stream
-} // namespace lmdb
+    }
+}
+

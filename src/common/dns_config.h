@@ -10,32 +10,38 @@
 
 namespace dns_config
 {
-    static const std::vector<std::string> SEED_NODES = {};
+    static const std::vector<std::string> SEED_NODES = { };
 
     static const std::vector<std::string> TXT_SEED_NODES = {
-        "seed.wazn.io"};
+        "seed.wazn.io"
+    };
 
     static const std::vector<std::string> CHECKPOINTS = {
-        "checkpoint.wazn.io"};
+        "checkpoint.wazn.io"
+    };
 
     static const std::vector<std::string> UPDATE = {
-        "update.wazn.io"};
+        "update.wazn.io"
+    };
 
     static const std::vector<std::string> DOWNLOAD = {
-        "download.wazn.io"};
+        "download.wazn.io"
+    };
 
     static const std::string ROOT_DOMAIN = "wazn.io";
 
     namespace testnet
     {
-        static const std::vector<std::string> SEED_NODES = {};
+        static const std::vector<std::string> SEED_NODES = { };
 
         static const std::vector<std::string> TXT_SEED_NODES = {
-            "seed-tn.wazn.io"};
+            "seed-tn.wazn.io"
+        };
 
         static const std::vector<std::string> CHECKPOINTS = {
-            "checkpoint-tn.wazn.io"};
-    } // namespace testnet
+            "checkpoint-tn.wazn.io"
+        };
+    }
 
     void init(const bool testnet);
 
@@ -59,24 +65,26 @@ namespace dns_config
         static const dns_config_t mainnet = {
             ::dns_config::SEED_NODES,
             ::dns_config::TXT_SEED_NODES,
-            ::dns_config::CHECKPOINTS};
+            ::dns_config::CHECKPOINTS
+        };
 
         static const dns_config_t testnet = {
             ::dns_config::testnet::SEED_NODES,
             ::dns_config::testnet::TXT_SEED_NODES,
-            ::dns_config::testnet::CHECKPOINTS};
+            ::dns_config::testnet::CHECKPOINTS
+        };
 
-        static const dns_config_t empty = {{}, {}};
+        static const dns_config_t empty = { {}, {} };
 
         switch (nettype)
         {
-        case cryptonote::MAINNET:
-            return mainnet;
-        case cryptonote::TESTNET:
-            return testnet;
-        default:
-            return empty;
+            case cryptonote::MAINNET:
+                return mainnet;
+            case cryptonote::TESTNET:
+                return testnet;
+            default:
+                return empty;
         }
     }
-} // namespace dns_config
+}
 #endif

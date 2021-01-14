@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -30,9 +30,8 @@
 
 #pragma once
 
-extern "C"
-{
+extern "C" {
 #include "crypto/crypto-ops.h"
 }
 
-void sc_reduce32copy(unsigned char *scopy, const unsigned char *s);
+void sc_reduce32copy(unsigned char * scopy, const unsigned char *s);

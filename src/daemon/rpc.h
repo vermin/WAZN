@@ -1,21 +1,21 @@
-// Copyright (c) 2014-2020, The Monero Project
-//
+// Copyright (c) 2014-2019, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -38,66 +38,67 @@
 namespace daemonize
 {
 
-    class t_rpc final
+class t_rpc final
+{
+public:
+  static void init_options(boost::program_options::options_description & option_spec)
+  {
+    cryptonote::core_rpc_server::init_options(option_spec);
+  }
+private:
+  cryptonote::core_rpc_server m_server;
+  const std::string m_description;
+public:
+  t_rpc(
+      boost::program_options::variables_map const & vm
+    , t_core & core
+    , t_p2p & p2p
+    , const bool restricted
+    , const std::string & port
+    , const std::string & description
+    )
+    : m_server{core.get(), p2p.get()}, m_description{description}
+  {
+    MGINFO("Initializing " << m_description << " RPC server...");
+
+    if (!m_server.init(vm, restricted, port))
     {
-    public:
-        static void init_options(boost::program_options::options_description &option_spec)
-        {
-            cryptonote::core_rpc_server::init_options(option_spec);
-        }
+      throw std::runtime_error("Failed to initialize " + m_description + " RPC server.");
+    }
+    MGINFO(m_description << " RPC server initialized OK on port: " << m_server.get_binded_port());
+  }
 
-    private:
-        cryptonote::core_rpc_server m_server;
-        const std::string m_description;
+  void run()
+  {
+    MGINFO("Starting " << m_description << " RPC server...");
+    if (!m_server.run(2, false))
+    {
+      throw std::runtime_error("Failed to start " + m_description + " RPC server.");
+    }
+    MGINFO(m_description << " RPC server started ok");
+  }
 
-    public:
-        t_rpc(
-            boost::program_options::variables_map const &vm, t_core &core, t_p2p &p2p, const bool restricted, const std::string &port, const std::string &description)
-            : m_server{core.get(), p2p.get()}, m_description{description}
-        {
-            MGINFO("Initializing " << m_description << " RPC server...");
+  void stop()
+  {
+    MGINFO("Stopping " << m_description << " RPC server...");
+    m_server.send_stop_signal();
+    m_server.timed_wait_server_stop(5000);
+  }
 
-            if (!m_server.init(vm, restricted, port))
-            {
-                throw std::runtime_error("Failed to initialize " + m_description + " RPC server.");
-            }
-            MGINFO(m_description << " RPC server initialized OK on port: " << m_server.get_binded_port());
-        }
+  cryptonote::core_rpc_server* get_server()
+  {
+    return &m_server;
+  }
 
-        void run()
-        {
-            MGINFO("Starting " << m_description << " RPC server...");
-            if (!m_server.run(2, false))
-            {
-                throw std::runtime_error("Failed to start " + m_description + " RPC server.");
-            }
-            MGINFO(m_description << " RPC server started ok");
-        }
+  ~t_rpc()
+  {
+    MGINFO("Deinitializing " << m_description << " RPC server...");
+    try {
+      m_server.deinit();
+    } catch (...) {
+      MERROR("Failed to deinitialize " << m_description << " RPC server...");
+    }
+  }
+};
 
-        void stop()
-        {
-            MGINFO("Stopping " << m_description << " RPC server...");
-            m_server.send_stop_signal();
-            m_server.timed_wait_server_stop(5000);
-        }
-
-        cryptonote::core_rpc_server *get_server()
-        {
-            return &m_server;
-        }
-
-        ~t_rpc()
-        {
-            MGINFO("Deinitializing " << m_description << " RPC server...");
-            try
-            {
-                m_server.deinit();
-            }
-            catch (...)
-            {
-                MERROR("Failed to deinitialize " << m_description << " RPC server...");
-            }
-        }
-    };
-
-} // namespace daemonize
+}

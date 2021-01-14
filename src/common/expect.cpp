@@ -34,7 +34,7 @@ namespace detail
 {
     namespace
     {
-        std::string generate_error(const char *msg, const char *file, unsigned line)
+        std::string generate_error(const char* msg, const char* file, unsigned line)
         {
             std::string error_msg{};
             if (msg)
@@ -59,12 +59,12 @@ namespace detail
                 error_msg.push_back(')');
             return error_msg;
         }
-    } // namespace
+    }
 
-    void expect::throw_(std::error_code ec, const char *msg, const char *file, unsigned line)
+    void expect::throw_(std::error_code ec, const char* msg, const char* file, unsigned line)
     {
         if (msg || file)
             throw std::system_error{ec, generate_error(msg, file, line)};
         throw std::system_error{ec};
     }
-} // namespace detail
+} // detail

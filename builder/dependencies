@@ -21,7 +21,7 @@ if [ ${WAZN_BUILD_OS} == "linux" ]; then
 		sudo apt install -y \
 		git curl ca-certificates nano zip unzip tar xz-utils cmake g++ make pkg-config libtool-bin autoconf \
 		automake build-essential cmake pkg-config pcsc-tools pcscd libpcsclite1 python-dev virtualenv \
-		libudev-dev libhidapi-dev libunbound-dev libboost-all-dev libusb-1.0-0-dev libusb-dev \
+		libudev-dev libhidapi-dev libzmq3-dev libunbound-dev libboost-all-dev libusb-1.0-0-dev libusb-dev \
 		libssl-dev libsodium-dev libcurl4-openssl-dev libminiupnpc-dev libunwind8-dev liblzma-dev \
 		libreadline6-dev libldns-dev libexpat1-dev libgtest-dev doxygen graphviz libhidapi-libusb0
 	else
@@ -41,6 +41,7 @@ elif [ ${WAZN_BUILD_OS} == "osx" ]; then
 	brew upgrade
 	brew install git
 	brew install zeromq
+	brew install cppzmq
 	brew install libsodium
 	brew install openSSL
 	brew install PkgConfig
@@ -49,6 +50,7 @@ elif [ ${WAZN_BUILD_OS} == "osx" ]; then
 	brew install miniupnpc
 	brew install hidapi
 	brew tap jmuncaster/homebrew-header-only
+	brew install jmuncaster/header-only/cppzmq
 	brew install cmake
 
 	if ! [ -f "/usr/local/lib/libcurl.a" ]; then

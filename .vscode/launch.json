@@ -26,7 +26,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
             "args": [
-                "--wallet-file", "~/.wazn/wallets/angrywasp",
+                "--wallet-file", "~/.wazn/wallets/vermin",
                 "--password", "''",
             ],
             "stopAtEntry": false,
@@ -52,7 +52,7 @@
                 "--rpc-bind-port", "11787",
                 "--daemon-address", "127.0.0.1:11786",
                 "--disable-rpc-login",
-                "--wallet-file", "~/.wazn/wallets/angrywasp"
+                "--wallet-file", "~/.wazn/wallets/vermin"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -99,7 +99,7 @@
             "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
             "args": [
                 "--testnet",
-                "--wallet-file", "~/.wazn/wallets/angrywasp-testnet",
+                "--wallet-file", "~/.wazn/wallets/vermin-testnet",
                 "--password", "''",
             ],
             "stopAtEntry": false,
@@ -126,7 +126,7 @@
                 "--rpc-bind-port", "33787",
                 "--daemon-address", "127.0.0.1:22786",
                 "--disable-rpc-login",
-                "--wallet-file", "~/.wazn/wallets/angrywasp-testnet",
+                "--wallet-file", "~/.wazn/wallets/vermin-testnet",
                 "--prompt-for-password"
             ],
             "stopAtEntry": false,

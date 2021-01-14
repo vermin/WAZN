@@ -33,10 +33,9 @@
 #include <sstream>
 #include "json_archive.h"
 
-namespace serialization
-{
+namespace serialization {
 
-    template <class T>
+template<class T>
     std::string dump_json(T &v)
     {
         std::stringstream ostr;

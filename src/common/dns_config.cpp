@@ -50,9 +50,9 @@ namespace dns_config
                 m_seed_nodes.push_back(r);
         }
 
-        tools::dns_utils::load_txt_records_from_dns(m_update, UPDATE);
-        tools::dns_utils::load_txt_records_from_dns(m_download, DOWNLOAD);
-        tools::dns_utils::load_txt_records_from_dns(m_txt_seed_nodes, txt_seed_nodes);
+        tools::dns_utils::load_txt_records_from_dns(dr, m_update, UPDATE);
+        tools::dns_utils::load_txt_records_from_dns(dr, m_download, DOWNLOAD);
+        tools::dns_utils::load_txt_records_from_dns(dr, m_txt_seed_nodes, txt_seed_nodes);
 
         for (auto &s : m_txt_seed_nodes)
             m_seed_nodes.push_back(s);

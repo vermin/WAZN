@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -88,6 +88,7 @@ target_link_libraries(daemon
     ${Boost_REGEX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
+    ${ZMQ_LIB}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES}
     ${Blocks})

@@ -1,6 +1,6 @@
 # Copyright (c) 2019-2021 WAZN Project
-# Copyright (c) 2018-2020, The NERVA Project
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2018-2019, The NERVA Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -42,6 +42,7 @@ set(crypto_sources
   hash-extra-skein.c
   hash.c
   hc128.c
+  hmac-keccak.c
   jh.c
   keccak.c
   oaes_lib.c
@@ -63,6 +64,7 @@ set(crypto_private_headers
   hash-ops.h
   hash.h
   hc128.h
+  hmac-keccak.h
   initializer.h
   jh.h
   keccak.h

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 WAZN Project
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2018, The Monero Project
 //
@@ -40,103 +40,103 @@ using namespace epee;
 
 namespace
 {
-    std::string refresh_string = "\r                                    \r";
+  std::string refresh_string = "\r                                    \r";
 }
 
-bool QuickSyncFile::open_writer(const boost::filesystem::path &file_path, uint64_t block_start, uint64_t block_stop)
+bool QuickSyncFile::open_writer(const boost::filesystem::path& file_path, uint64_t block_start, uint64_t block_stop)
 {
-    const boost::filesystem::path dir_path = file_path.parent_path();
-    if (!dir_path.empty())
+  const boost::filesystem::path dir_path = file_path.parent_path();
+  if (!dir_path.empty())
+  {
+    if (boost::filesystem::exists(dir_path))
     {
-        if (boost::filesystem::exists(dir_path))
-        {
-            if (!boost::filesystem::is_directory(dir_path))
-            {
-                MFATAL("export directory path is a file: " << dir_path);
-                return false;
-            }
-        }
-        else
-        {
-            if (!boost::filesystem::create_directory(dir_path))
-            {
-                MFATAL("Failed to create directory " << dir_path);
-                return false;
-            }
-        }
-    }
-
-    m_raw_data_file = new std::ofstream();
-
-    MINFO("creating file");
-
-    m_raw_data_file->open(file_path.string(), std::ios_base::out | std::ios::trunc);
-    if (m_raw_data_file->fail())
+      if (!boost::filesystem::is_directory(dir_path))
+      {
+        MFATAL("export directory path is a file: " << dir_path);
         return false;
+      }
+    }
+    else
+    {
+      if (!boost::filesystem::create_directory(dir_path))
+      {
+        MFATAL("Failed to create directory " << dir_path);
+        return false;
+      }
+    }
+  }
 
-    initialize_file(block_start, block_stop);
+  m_raw_data_file = new std::ofstream();
 
-    return true;
+  MINFO("creating file");
+
+  m_raw_data_file->open(file_path.string(), std::ios_base::out | std::ios::trunc);
+  if (m_raw_data_file->fail())
+    return false;
+
+  initialize_file(block_start, block_stop);
+
+  return true;
 }
+
 
 bool QuickSyncFile::initialize_file(uint64_t block_start, uint64_t block_stop)
 {
-    uint32_t bsa = (uint32_t)block_start;
-    uint32_t bsb = (uint32_t)block_stop;
+  uint32_t bsa = (uint32_t)block_start;
+  uint32_t bsb = (uint32_t)block_stop;
 
-    m_raw_data_file->write(reinterpret_cast<const char *>(&quicksync_magic), 4);
-    m_raw_data_file->write(reinterpret_cast<const char *>(&bsa), 4);
-    m_raw_data_file->write(reinterpret_cast<const char *>(&bsb), 4);
-    return true;
+  m_raw_data_file->write(reinterpret_cast<const char *>(&quicksync_magic), 4);
+  m_raw_data_file->write(reinterpret_cast<const char *>(&bsa), 4);
+  m_raw_data_file->write(reinterpret_cast<const char *>(&bsb), 4);
+  return true;
 }
 
 bool QuickSyncFile::close()
 {
-    if (m_raw_data_file->fail())
-        return false;
+  if (m_raw_data_file->fail())
+    return false;
 
-    m_raw_data_file->flush();
-    delete m_raw_data_file;
-    return true;
+  m_raw_data_file->flush();
+  delete m_raw_data_file;
+  return true;
 }
 
-bool QuickSyncFile::store_blockchain(Blockchain *_blockchain_storage, boost::filesystem::path &output_file, uint64_t block_start, uint64_t block_stop)
+bool QuickSyncFile::store_blockchain(Blockchain* _blockchain_storage, boost::filesystem::path& output_file, uint64_t block_start, uint64_t block_stop)
 {
-    m_blockchain_storage = _blockchain_storage;
-    uint64_t num_blocks_written = 0;
-    uint64_t progress_interval = 1000;
+  m_blockchain_storage = _blockchain_storage;
+  uint64_t num_blocks_written = 0;
+  uint64_t progress_interval = 1000;
 
-    MINFO("source blockchain height: " << m_blockchain_storage->get_current_blockchain_height() - 1);
+  MINFO("source blockchain height: " <<  m_blockchain_storage->get_current_blockchain_height()-1);
 
-    if (block_stop == 0)
-        block_stop = m_blockchain_storage->get_current_blockchain_height() - 1;
+  if (block_stop == 0)
+    block_stop = m_blockchain_storage->get_current_blockchain_height() - 1;
 
-    MINFO("Exporting blockchain range: " << block_start << " - " << block_stop);
+  MINFO("Exporting blockchain range: " << block_start << " - " << block_stop);
 
-    MINFO("Storing quick sync data...");
-    if (!QuickSyncFile::open_writer(output_file, block_start, block_stop))
-    {
-        MFATAL("failed to open raw file for write");
-        return false;
+  MINFO("Storing quick sync data...");
+  if (!QuickSyncFile::open_writer(output_file, block_start, block_stop))
+  {
+    MFATAL("failed to open raw file for write");
+    return false;
+  }
+
+  for (m_cur_height = block_start; m_cur_height <= block_stop; ++m_cur_height)
+  {
+    // this method's height refers to 0-based height (genesis block = height 0)
+    crypto::hash hash = m_blockchain_storage->get_block_id_by_height(m_cur_height);
+
+    m_raw_data_file->write(hash.data, 32);
+
+    if (m_cur_height % progress_interval == 0) {
+      std::cout << refresh_string;
+      std::cout << "block " << m_cur_height << "/" << block_stop << std::flush;
     }
+  }
 
-    for (m_cur_height = block_start; m_cur_height <= block_stop; ++m_cur_height)
-    {
-        // this method's height refers to 0-based height (genesis block = height 0)
-        crypto::hash hash = m_blockchain_storage->get_block_id_by_height(m_cur_height);
+  // print message for last block, which may not have been printed yet due to progress_interval
+  std::cout << refresh_string;
+  std::cout << "block " << m_cur_height-1 << "/" << block_stop << ENDL;
 
-        m_raw_data_file->write(hash.data, 32);
-
-        if (m_cur_height % progress_interval == 0)
-        {
-            std::cout << refresh_string;
-            std::cout << "block " << m_cur_height << "/" << block_stop << std::flush;
-        }
-    }
-
-    // print message for last block, which may not have been printed yet due to progress_interval
-    std::cout << refresh_string;
-    std::cout << "block " << m_cur_height - 1 << "/" << block_stop << ENDL;
-
-    return QuickSyncFile::close();
+  return QuickSyncFile::close();
 }

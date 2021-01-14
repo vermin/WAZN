@@ -1,3 +1,5 @@
+// Copyright (c) 2019-2021 WAZN Project
+// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2017-2019, The Monero Project
 //
 // All rights reserved.
@@ -38,14 +40,24 @@
 namespace rct
 {
 
-    Bulletproof bulletproof_PROVE(const rct::key &v, const rct::key &gamma);
-    Bulletproof bulletproof_PROVE(uint64_t v, const rct::key &gamma);
-    Bulletproof bulletproof_PROVE(const rct::keyV &v, const rct::keyV &gamma);
-    Bulletproof bulletproof_PROVE(const std::vector<uint64_t> &v, const rct::keyV &gamma);
-    bool bulletproof_VERIFY(const Bulletproof &proof);
-    bool bulletproof_VERIFY(const std::vector<const Bulletproof *> &proofs);
-    bool bulletproof_VERIFY(const std::vector<Bulletproof> &proofs);
+Bulletproof bulletproof_PROVE(const rct::key &v, const rct::key &gamma, bool v2);
+Bulletproof bulletproof_PROVE_v1(const rct::key &v, const rct::key &gamma);
+Bulletproof bulletproof_PROVE_v2(const rct::key &v, const rct::key &gamma);
 
-} // namespace rct
+Bulletproof bulletproof_PROVE(uint64_t v, const rct::key &gamma, bool v2);
+Bulletproof bulletproof_PROVE_v1(uint64_t v, const rct::key &gamma);
+Bulletproof bulletproof_PROVE_v2(uint64_t v, const rct::key &gamma);
+
+Bulletproof bulletproof_PROVE_v2(const rct::keyV &v, const rct::keyV &gamma);
+Bulletproof bulletproof_PROVE_v2(const std::vector<uint64_t> &v, const rct::keyV &gamma);
+
+bool bulletproof_VERIFY(const Bulletproof &proof, bool v2);
+bool bulletproof_VERIFY_v1(const Bulletproof &proof);
+bool bulletproof_VERIFY_v2(const Bulletproof &proof);
+
+bool bulletproof_VERIFY_v2(const std::vector<const Bulletproof*> &proofs);
+bool bulletproof_VERIFY_v2(const std::vector<Bulletproof> &proofs);
+
+}
 
 #endif

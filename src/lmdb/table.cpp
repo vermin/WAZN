@@ -28,7 +28,7 @@
 
 namespace lmdb
 {
-    expect<MDB_dbi> table::open(MDB_txn &write_txn) const noexcept
+    expect<MDB_dbi> table::open(MDB_txn& write_txn) const noexcept
     {
         MONERO_PRECOND(name != nullptr);
 
@@ -40,4 +40,4 @@ namespace lmdb
             MONERO_LMDB_CHECK(mdb_set_dupsort(&write_txn, out, value_cmp));
         return out;
     }
-} // namespace lmdb
+}

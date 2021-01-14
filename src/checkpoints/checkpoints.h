@@ -33,11 +33,10 @@
 #include "misc_log_ex.h"
 #include "crypto/hash.h"
 #include "cryptonote_config.h"
-#include "cryptonote_basic/difficulty.h"
 
-#define ADD_CHECKPOINT(h, hash) CHECK_AND_ASSERT(add_checkpoint(h, hash), false);
-#define ADD_CHECKPOINT2(h, hash, difficulty) CHECK_AND_ASSERT(add_checkpoint(h, hash, difficulty), false);
+#define ADD_CHECKPOINT(h, hash)  CHECK_AND_ASSERT(add_checkpoint(h,  hash), false);
 #define JSON_HASH_FILE_NAME "checkpoints.json"
+
 
 namespace cryptonote
 {
@@ -51,6 +50,7 @@ namespace cryptonote
     class checkpoints
     {
     public:
+
         /**
      * @brief default constructor
      */
@@ -61,13 +61,12 @@ namespace cryptonote
      *
      * @param height the height of the block the checkpoint is for
      * @param hash_str the hash of the block, as a string
-     * @param difficulty_str the cumulative difficulty of the block, as a string (optional)
      *
      * @return false if parsing the hash fails, or if the height is a duplicate
      *         AND the existing checkpoint hash does not match the new one,
      *         otherwise returns true
      */
-        bool add_checkpoint(uint64_t height, const std::string &hash_str, const std::string &difficulty_str = "");
+    bool add_checkpoint(uint64_t height, const std::string& hash_str);
 
         /**
      * @brief checks if there is a checkpoint in the future
@@ -97,12 +96,12 @@ namespace cryptonote
      *         true if the passed parameters match the stored checkpoint,
      *         false otherwise
      */
-        bool check_block(uint64_t height, const crypto::hash &h, bool &is_a_checkpoint) const;
+    bool check_block(uint64_t height, const crypto::hash& h, bool& is_a_checkpoint) const;
 
         /**
      * @overload
      */
-        bool check_block(uint64_t height, const crypto::hash &h) const;
+    bool check_block(uint64_t height, const crypto::hash& h) const;
 
         /**
      * @brief checks if alternate chain blocks should be kept for a given height
@@ -132,14 +131,7 @@ namespace cryptonote
      *
      * @return a const reference to the checkpoints container
      */
-        const std::map<uint64_t, crypto::hash> &get_points() const;
-
-        /**
-     * @brief gets the difficulty checkpoints container
-     *
-     * @return a const reference to the difficulty checkpoints container
-     */
-        const std::map<uint64_t, difficulty_type> &get_difficulty_points() const;
+    const std::map<uint64_t, crypto::hash>& get_points() const;
 
         /**
      * @brief checks if our checkpoints container conflicts with another
@@ -151,7 +143,7 @@ namespace cryptonote
      *
      * @return false if any conflict is found, otherwise true
      */
-        bool check_for_conflicts(const checkpoints &other) const;
+    bool check_for_conflicts(const checkpoints& other) const;
 
         /**
      * @brief loads the default main chain checkpoints
@@ -173,7 +165,7 @@ namespace cryptonote
      *
      * @return true if loading successful and no conflicts
      */
-        bool load_new_checkpoints(const std::string &json_hashfile_fullpath, network_type nettype = MAINNET, bool dns = true);
+    bool load_new_checkpoints(const std::string &json_hashfile_fullpath, network_type nettype=MAINNET, bool dns=true);
 
         /**
      * @brief load new checkpoints from json
@@ -194,8 +186,7 @@ namespace cryptonote
         bool load_checkpoints_from_dns(network_type nettype = MAINNET);
 
     private:
-        std::map<uint64_t, crypto::hash> m_points;               //!< the checkpoints container
-        std::map<uint64_t, difficulty_type> m_difficulty_points; //!< the difficulty checkpoints container
+    std::map<uint64_t, crypto::hash> m_points; //!< the checkpoints container
     };
 
-} // namespace cryptonote
+}

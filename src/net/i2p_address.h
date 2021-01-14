@@ -38,12 +38,12 @@
 
 namespace epee
 {
-    namespace serialization
-    {
-        class portable_storage;
-        struct section;
-    } // namespace serialization
-} // namespace epee
+namespace serialization
+{
+    class portable_storage;
+    struct section;
+}
+}
 
 namespace net
 {
@@ -61,7 +61,7 @@ namespace net
         static constexpr std::size_t buffer_size() noexcept { return sizeof(host_); }
 
         //! \return `<unknown tor host>`.
-        static const char *unknown_str() noexcept;
+        static const char* unknown_str() noexcept;
 
         //! An object with `port() == 0` and `host_str() == unknown_str()`.
         i2p_address() noexcept;
@@ -77,31 +77,31 @@ namespace net
         static expect<i2p_address> make(boost::string_ref address, std::uint16_t default_port = 0);
 
         //! Load from epee p2p format, and \return false if not valid tor address
-        bool _load(epee::serialization::portable_storage &src, epee::serialization::section *hparent);
+        bool _load(epee::serialization::portable_storage& src, epee::serialization::section* hparent);
 
         //! Store in epee p2p format
-        bool store(epee::serialization::portable_storage &dest, epee::serialization::section *hparent) const;
+        bool store(epee::serialization::portable_storage& dest, epee::serialization::section* hparent) const;
 
         // Moves and copies are currently identical
 
-        i2p_address(const i2p_address &rhs) noexcept;
+        i2p_address(const i2p_address& rhs) noexcept;
         ~i2p_address() = default;
-        i2p_address &operator=(const i2p_address &rhs) noexcept;
+        i2p_address& operator=(const i2p_address& rhs) noexcept;
 
         //! \return True if default constructed or via `unknown()`.
         bool is_unknown() const noexcept;
 
-        bool equal(const i2p_address &rhs) const noexcept;
-        bool less(const i2p_address &rhs) const noexcept;
+        bool equal(const i2p_address& rhs) const noexcept;
+        bool less(const i2p_address& rhs) const noexcept;
 
         //! \return True if i2p addresses are identical.
-        bool is_same_host(const i2p_address &rhs) const noexcept;
+        bool is_same_host(const i2p_address& rhs) const noexcept;
 
         //! \return `x.b32.i2p` or `x.b32.i2p:z` if `port() != 0`.
         std::string str() const;
 
         //! \return Null-terminated `x.b32.i2p` value or `unknown_str()`.
-        const char *host_str() const noexcept { return host_; }
+        const char* host_str() const noexcept { return host_; }
 
         //! \return Port value or `0` if unspecified.
         std::uint16_t port() const noexcept { return port_; }
@@ -123,18 +123,18 @@ namespace net
         bool is_blockable() const noexcept { return !is_unknown(); }
     };
 
-    inline bool operator==(const i2p_address &lhs, const i2p_address &rhs) noexcept
+    inline bool operator==(const i2p_address& lhs, const i2p_address& rhs) noexcept
     {
         return lhs.equal(rhs);
     }
 
-    inline bool operator!=(const i2p_address &lhs, const i2p_address &rhs) noexcept
+    inline bool operator!=(const i2p_address& lhs, const i2p_address& rhs) noexcept
     {
         return !lhs.equal(rhs);
     }
 
-    inline bool operator<(const i2p_address &lhs, const i2p_address &rhs) noexcept
+    inline bool operator<(const i2p_address& lhs, const i2p_address& rhs) noexcept
     {
         return lhs.less(rhs);
     }
-} // namespace net
+} // net

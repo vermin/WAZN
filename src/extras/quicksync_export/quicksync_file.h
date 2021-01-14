@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2021 WAZN Project
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2014-2018, The Monero Project
 //
@@ -56,20 +56,23 @@ using namespace cryptonote;
 class QuickSyncFile
 {
 public:
-    bool store_blockchain(cryptonote::Blockchain *cs, boost::filesystem::path &output_file, uint64_t start_height = 0, uint64_t stop_height = 0);
+
+  bool store_blockchain(cryptonote::Blockchain* cs, boost::filesystem::path& output_file, uint64_t start_height = 0, uint64_t stop_height = 0);
 
 protected:
-    Blockchain *m_blockchain_storage;
 
-    std::ofstream *m_raw_data_file;
+  Blockchain* m_blockchain_storage;
 
-    // open export file for write
-    bool open_writer(const boost::filesystem::path &file_path, uint64_t block_start, uint64_t block_stop);
-    bool initialize_file(uint64_t block_start, uint64_t block_stop);
-    void store_blockchain();
-    bool close();
+  std::ofstream * m_raw_data_file;
+
+  // open export file for write
+  bool open_writer(const boost::filesystem::path& file_path, uint64_t block_start, uint64_t block_stop);
+  bool initialize_file(uint64_t block_start, uint64_t block_stop);
+  void store_blockchain();
+  bool close();
 
 private:
-    uint64_t m_cur_height; // tracks current height during export
-    const uint32_t quicksync_magic = 0x149f943e;
+
+  uint64_t m_cur_height; // tracks current height during export
+  const uint32_t quicksync_magic = 0x149f943e;
 };

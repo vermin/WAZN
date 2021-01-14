@@ -1,6 +1,6 @@
 # Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2018-2019, The NERVA Project
-# Copyright (c) 2014-2020, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 #
 # All rights reserved.
 #
@@ -38,9 +38,11 @@ set(common_sources
   base58.cpp
   command_line.cpp
   dns_utils.cpp
+  download.cpp
   error.cpp
   expect.cpp
   util.cpp
+  i18n.cpp
   notify.cpp
   password.cpp
   perf_timer.cpp
@@ -71,6 +73,7 @@ set(common_private_headers
   command_line.h
   common_fwd.h
   dns_utils.h
+  download.h
   error.h
   expect.h
   http_connection.h
@@ -82,6 +85,7 @@ set(common_private_headers
   unordered_containers_boost_serialization.h
   util.h
   varint.h
+  i18n.h
   password.h
   perf_timer.h
   spawn.h
@@ -91,7 +95,6 @@ set(common_private_headers
   aligned.h
   timings.h
   combinator.h
-  utf8.h
   wazn_https.h
   dns_config.h)
 
@@ -100,7 +103,8 @@ monero_private_headers(common
 monero_add_library(common
   ${common_sources}
   ${common_headers}
-  ${common_private_headers})
+  ${common_private_headers}
+  DEPENDS generate_translations_header)
 target_link_libraries(common
   PUBLIC
     cncrypto

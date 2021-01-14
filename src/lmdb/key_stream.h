@@ -53,12 +53,12 @@ namespace lmdb
             invalidate all prior copies of the iterator). Usage is identical
             to `std::istream_iterator`.
     */
-    template <typename K, typename V>
+    template<typename K, typename V>
     class key_iterator
     {
-        MDB_cursor *cur;
+        MDB_cursor* cur;
         epee::span<const std::uint8_t> key;
-
+        
         void increment()
         {
             // MDB_NEXT_MULTIPLE doesn't work if only one value is stored :/
@@ -75,17 +75,16 @@ namespace lmdb
 
         //! Construct an "end" iterator.
         key_iterator() noexcept
-            : cur(nullptr), key()
-        {
-        }
+          : cur(nullptr), key()
+        {}
 
         /*!
             \param cur Iterate over keys starting at this cursor position.
             \throw std::system_error if unexpected LMDB error. This can happen
                 if `cur` is invalid.
         */
-        key_iterator(MDB_cursor *cur)
-            : cur(cur), key()
+        key_iterator(MDB_cursor* cur)
+          : cur(cur), key()
         {
             if (cur)
                 key = lmdb::stream::get(*cur, MDB_GET_CURRENT, sizeof(K), sizeof(V)).first;
@@ -95,17 +94,18 @@ namespace lmdb
         bool is_end() const noexcept { return key.empty(); }
 
         //! \return True iff `rhs` is referencing `this` key.
-        bool equal(key_iterator const &rhs) const noexcept
+        bool equal(key_iterator const& rhs) const noexcept
         {
-            return (key.empty() && rhs.key.empty()) ||
-                   key.data() == rhs.key.data();
+            return
+                (key.empty() && rhs.key.empty()) ||
+                key.data() == rhs.key.data();
         }
 
         /*!
             Moves iterator to next key or end. Invalidates all prior copies of
             the iterator.
         */
-        key_iterator &operator++()
+        key_iterator& operator++()
         {
             increment();
             return *this;
@@ -151,7 +151,7 @@ namespace lmdb
             \throw std::system_error if LMDB has unexpected errors.
             \return C++ iterator starting at current cursor position.
         */
-        template <typename T = V, typename F = T, std::size_t offset = 0>
+        template<typename T = V, typename F = T, std::size_t offset = 0>
         value_iterator<T, F, offset> make_value_iterator() const
         {
             static_assert(std::is_same<T, V>(), "bad MONERO_FIELD usage?");
@@ -169,7 +169,7 @@ namespace lmdb
             \throw std::system_error if LMDB has unexpected errors.
             \return An InputIterator range over values at cursor position.
         */
-        template <typename T = V, typename F = T, std::size_t offset = 0>
+        template<typename T = V, typename F = T, std::size_t offset = 0>
         boost::iterator_range<value_iterator<T, F, offset>> make_value_range() const
         {
             return {make_value_iterator<T, F, offset>(), value_iterator<T, F, offset>{}};
@@ -184,23 +184,22 @@ namespace lmdb
         \tparam V value type being stored by each record.
         \tparam D cleanup functor for the cursor; usually unique per db/table.
     */
-    template <typename K, typename V, typename D>
+    template<typename K, typename V, typename D>
     class key_stream
     {
         std::unique_ptr<MDB_cursor, D> cur;
-
     public:
+
         //! Take ownership of `cur` without changing position. `nullptr` valid.
         explicit key_stream(std::unique_ptr<MDB_cursor, D> cur)
-            : cur(std::move(cur))
-        {
-        }
+          : cur(std::move(cur))
+        {}
 
-        key_stream(key_stream &&) = default;
-        key_stream(key_stream const &) = delete;
+        key_stream(key_stream&&) = default;
+        key_stream(key_stream const&) = delete;
         ~key_stream() = default;
-        key_stream &operator=(key_stream &&) = default;
-        key_stream &operator=(key_stream const &) = delete;
+        key_stream& operator=(key_stream&&) = default;
+        key_stream& operator=(key_stream const&) = delete;
 
         /*!
             Give up ownership of the cursor. `make_iterator()` and
@@ -248,15 +247,18 @@ namespace lmdb
         }
     };
 
-    template <typename K, typename V>
-    inline bool operator==(key_iterator<K, V> const &lhs, key_iterator<K, V> const &rhs) noexcept
+    template<typename K, typename V>
+    inline
+    bool operator==(key_iterator<K, V> const& lhs, key_iterator<K, V> const& rhs) noexcept
     {
         return lhs.equal(rhs);
     }
 
-    template <typename K, typename V>
-    inline bool operator!=(key_iterator<K, V> const &lhs, key_iterator<K, V> const &rhs) noexcept
+    template<typename K, typename V>
+    inline
+    bool operator!=(key_iterator<K, V> const& lhs, key_iterator<K, V> const& rhs) noexcept
     {
         return !lhs.equal(rhs);
     }
-} // namespace lmdb
+} // lmdb
+

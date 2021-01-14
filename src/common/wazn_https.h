@@ -17,9 +17,9 @@ namespace blacklist
     static std::vector<std::string> ip_list;
     const std::vector<std::string> get_ip_list();
     void read_blacklist_from_url(const bool testnet);
-    std::vector<std::string> split_string(const std::string &str, const std::string &delimiter);
+    std::vector<std::string> split_string(const std::string& str, const std::string& delimiter);
     size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp);
-}; // namespace blacklist
+};
 
 namespace analytics
 {
@@ -28,6 +28,6 @@ namespace analytics
     void enable(bool enabled);
     bool is_enabled();
     bool contact_server(const bool testnet);
-}; // namespace analytics
+};
 
 #endif

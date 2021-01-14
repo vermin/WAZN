@@ -47,40 +47,39 @@ namespace lmdb
     namespace
     {
         constexpr const mdb_size_t max_resize = 1 * 1024 * 1024 * 1024; // 1 GB
-        void acquire_context(context &ctx) noexcept
+        void acquire_context(context& ctx) noexcept
         {
-            while (ctx.lock.test_and_set())
-                ;
+            while (ctx.lock.test_and_set());
             ++(ctx.active);
             ctx.lock.clear();
         }
 
-        void release_context(context &ctx) noexcept
+        void release_context(context& ctx) noexcept
         {
             --(ctx.active);
         }
-    } // namespace
+    }
 
-    void release_read_txn::operator()(MDB_txn *ptr) const noexcept
+    void release_read_txn::operator()(MDB_txn* ptr) const noexcept
     {
         if (ptr)
         {
-            MDB_env *const env = mdb_txn_env(ptr);
+            MDB_env* const env = mdb_txn_env(ptr);
             abort_txn{}(ptr);
             if (env)
             {
-                context *ctx = reinterpret_cast<context *>(mdb_env_get_userctx(env));
+                context* ctx = reinterpret_cast<context*>(mdb_env_get_userctx(env));
                 if (ctx)
                     release_context(*ctx);
             }
         }
     }
 
-    expect<environment> open_environment(const char *path, MDB_dbi max_dbs) noexcept
+    expect<environment> open_environment(const char* path, MDB_dbi max_dbs) noexcept
     {
         MONERO_PRECOND(path != nullptr);
 
-        MDB_env *obj = nullptr;
+        MDB_env* obj = nullptr;
         MONERO_LMDB_CHECK(mdb_env_create(std::addressof(obj)));
         environment out{obj};
 
@@ -97,7 +96,7 @@ namespace lmdb
         {
             acquire_context(ctx);
 
-            MDB_txn *txn = nullptr;
+            MDB_txn* txn = nullptr;
             const int err =
                 mdb_txn_begin(handle(), nullptr, flags, &txn);
             if (!err && txn != nullptr)
@@ -112,7 +111,7 @@ namespace lmdb
     }
 
     database::database(environment env)
-        : env(std::move(env)), ctx{{}, ATOMIC_FLAG_INIT}
+      : env(std::move(env)), ctx{{}, ATOMIC_FLAG_INIT}
     {
         if (handle())
         {
@@ -124,18 +123,15 @@ namespace lmdb
 
     database::~database() noexcept
     {
-        while (ctx.active)
-            ;
+        while (ctx.active);
     }
 
     expect<void> database::resize() noexcept
     {
         MONERO_PRECOND(handle() != nullptr);
 
-        while (ctx.lock.test_and_set())
-            ;
-        while (ctx.active)
-            ;
+        while (ctx.lock.test_and_set());
+        while (ctx.active);
 
         MDB_envinfo info{};
         MONERO_LMDB_CHECK(mdb_env_info(handle(), &info));
@@ -188,4 +184,4 @@ namespace lmdb
         release_context(ctx);
         return success();
     }
-} // namespace lmdb
+} // lmdb

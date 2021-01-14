@@ -74,14 +74,14 @@ namespace net
             std::uint16_t port;
 
             BEGIN_KV_SERIALIZE_MAP()
-            KV_SERIALIZE(host)
-            KV_SERIALIZE(port)
+                KV_SERIALIZE(host)
+                KV_SERIALIZE(port)
             END_KV_SERIALIZE_MAP()
         };
-    } // namespace
+    }
 
     i2p_address::i2p_address(const boost::string_ref host, const std::uint16_t port) noexcept
-        : port_(port)
+      : port_(port)
     {
         // this is a private constructor, throw if moved to public
         assert(host.size() < sizeof(host_));
@@ -91,13 +91,13 @@ namespace net
         std::memset(host_ + length, 0, sizeof(host_) - length);
     }
 
-    const char *i2p_address::unknown_str() noexcept
+    const char* i2p_address::unknown_str() noexcept
     {
         return unknown_host;
     }
 
     i2p_address::i2p_address() noexcept
-        : port_(0)
+      : port_(0)
     {
         static_assert(sizeof(unknown_host) <= sizeof(host_), "bad buffer size");
         std::memcpy(host_, unknown_host, sizeof(unknown_host));
@@ -120,7 +120,7 @@ namespace net
         return i2p_address{host, porti};
     }
 
-    bool i2p_address::_load(epee::serialization::portable_storage &src, epee::serialization::section *hparent)
+    bool i2p_address::_load(epee::serialization::portable_storage& src, epee::serialization::section* hparent)
     {
         i2p_serialized in{};
         if (in._load(src, hparent) && in.host.size() < sizeof(host_) && (in.host == unknown_host || !host_check(in.host).has_error()))
@@ -136,19 +136,19 @@ namespace net
         return false;
     }
 
-    bool i2p_address::store(epee::serialization::portable_storage &dest, epee::serialization::section *hparent) const
+    bool i2p_address::store(epee::serialization::portable_storage& dest, epee::serialization::section* hparent) const
     {
         const i2p_serialized out{std::string{host_}, port_};
         return out.store(dest, hparent);
     }
 
-    i2p_address::i2p_address(const i2p_address &rhs) noexcept
-        : port_(rhs.port_)
+    i2p_address::i2p_address(const i2p_address& rhs) noexcept
+      : port_(rhs.port_)
     {
         std::memcpy(host_, rhs.host_, sizeof(host_));
     }
 
-    i2p_address &i2p_address::operator=(const i2p_address &rhs) noexcept
+    i2p_address& i2p_address::operator=(const i2p_address& rhs) noexcept
     {
         if (this != std::addressof(rhs))
         {
@@ -164,18 +164,17 @@ namespace net
         return host_[0] == '<'; // character is not allowed otherwise
     }
 
-    bool i2p_address::equal(const i2p_address &rhs) const noexcept
+    bool i2p_address::equal(const i2p_address& rhs) const noexcept
     {
         return port_ == rhs.port_ && is_same_host(rhs);
     }
 
-    bool i2p_address::less(const i2p_address &rhs) const noexcept
+    bool i2p_address::less(const i2p_address& rhs) const noexcept
     {
-        int res = std::strcmp(host_str(), rhs.host_str());
-        return res < 0 || (res == 0 && port() < rhs.port());
+        return std::strcmp(host_str(), rhs.host_str()) < 0 || port() < rhs.port();
     }
 
-    bool i2p_address::is_same_host(const i2p_address &rhs) const noexcept
+    bool i2p_address::is_same_host(const i2p_address& rhs) const noexcept
     {
         return std::strcmp(host_str(), rhs.host_str()) == 0;
     }
@@ -198,4 +197,4 @@ namespace net
         }
         return out;
     }
-} // namespace net
+}

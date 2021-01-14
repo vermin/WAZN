@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2020, The Monero Project
+// Copyright (c) 2014-2019, The Monero Project
 //
 // All rights reserved.
 //
@@ -39,22 +39,19 @@ bool do_serialize(Archive<true> &ar, std::list<T> &v);
 
 namespace serialization
 {
-    namespace detail
+  namespace detail
+  {
+    template <typename T>
+    void do_add(std::list<T> &c, T &&e)
     {
-        template <typename T>
-        void do_add(std::list<T> &c, T &&e)
-        {
-            c.emplace_back(std::forward<T>(e));
-        }
-    } // namespace detail
-} // namespace serialization
+      c.emplace_back(std::move(e));
+    }
+  }
+}
 
 #include "serialization.h"
 
 template <template <bool> class Archive, class T>
-bool do_serialize(Archive<false> &ar, std::list<T> &v)
-{
-    return do_serialize_container(ar, v);
-}
+bool do_serialize(Archive<false> &ar, std::list<T> &v) { return do_serialize_container(ar, v); }
 template <template <bool> class Archive, class T>
 bool do_serialize(Archive<true> &ar, std::list<T> &v) { return do_serialize_container(ar, v); }

@@ -1,6 +1,5 @@
 // Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2018, The Monero Project
 //
 // All rights reserved.
 //
@@ -30,6 +29,7 @@
 //
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
+
 #include "quicksync.h"
 
 #include "common/dns_utils.h"
@@ -45,7 +45,7 @@ using namespace epee;
 
 namespace cryptonote
 {
-    quicksync::quicksync() {}
+  quicksync::quicksync() { }
     //---------------------------------------------------------------------------
     bool quicksync::check_block(uint32_t height, const crypto::hash h) const
     {
@@ -54,7 +54,7 @@ namespace cryptonote
 
         auto it = m_data.find(height);
 
-        if (it == m_data.end())
+    if(it == m_data.end())
             return false;
 
         if (it->second != h)
@@ -87,7 +87,7 @@ namespace cryptonote
         uint32_t quicksync_magic = 0x149f943e;
 
         uint32_t comp = 0;
-        import_file.read((char *)&comp, sizeof(comp));
+    import_file.read ((char*)&comp, sizeof(comp));
 
         if (comp != quicksync_magic)
         {
@@ -95,8 +95,8 @@ namespace cryptonote
             return false;
         }
 
-        import_file.read((char *)&m_min, sizeof(m_min));
-        import_file.read((char *)&m_max, sizeof(m_max));
+    import_file.read ((char*)&m_min, sizeof(m_min));
+    import_file.read ((char*)&m_max, sizeof(m_max));
 
         LOG_PRINT_L0("Loading quick sync data for blocks " << m_min << " - " << m_max);
 
@@ -106,11 +106,11 @@ namespace cryptonote
         for (uint32_t i = 0; i < count; i++)
         {
             crypto::hash h = crypto::null_hash;
-            import_file.read((char *)&h.data, 32);
+      import_file.read ((char*)&h.data, 32);
             m_data[x++] = h;
         }
 
         m_is_loaded = true;
         return true;
     }
-} // namespace cryptonote
+}

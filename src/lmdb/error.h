@@ -33,7 +33,7 @@
 #define MONERO_LMDB_CHECK(...)         \
     do                                 \
     {                                  \
-        const int err = __VA_ARGS__;   \
+        const int err = __VA_ARGS__ ;  \
         if (err)                       \
             return {lmdb::error(err)}; \
     } while (0)
@@ -47,19 +47,18 @@ namespace lmdb
         // All other errors are the values reported by LMDB
     };
 
-    std::error_category const &error_category() noexcept;
+    std::error_category const& error_category() noexcept;
 
     inline std::error_code make_error_code(error value) noexcept
     {
         return std::error_code{int(value), error_category()};
     }
-} // namespace lmdb
+}
 
 namespace std
 {
-    template <>
+    template<>
     struct is_error_code_enum<::lmdb::error>
-        : true_type
-    {
-    };
-} // namespace std
+      : true_type
+    {};
+}

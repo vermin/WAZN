@@ -36,7 +36,7 @@ enum class common_error : int
     kInvalidErrorCode     //!< Default `std::error_code` given to `expect<T>`
 };
 
-std::error_category const &common_category() noexcept;
+std::error_category const& common_category() noexcept;
 
 inline std::error_code make_error_code(::common_error value) noexcept
 {
@@ -45,9 +45,8 @@ inline std::error_code make_error_code(::common_error value) noexcept
 
 namespace std
 {
-    template <>
+    template<>
     struct is_error_code_enum<::common_error>
-        : true_type
-    {
-    };
-} // namespace std
+      : true_type
+    {};
+}

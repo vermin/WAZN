@@ -1,22 +1,22 @@
 // Copyright (c) 2017-2018, The Masari Project
-// Copyright (c) 2014-2020, The Monero Project
-//
+// Copyright (c) 2014-2019, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -26,7 +26,7 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
+// 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #pragma once
@@ -38,13 +38,14 @@
 
 namespace cryptonote
 {
-    typedef boost::multiprecision::uint128_t difficulty_type;
+    typedef boost::multiprecision::uint128_t difficulty_type_128;
 
-    std::string hex(difficulty_type v);
+    std::string hex(difficulty_type_128 v);
 
-    bool check_hash_64(const crypto::hash &hash, uint64_t difficulty);
-    bool check_hash_128(const crypto::hash &hash, difficulty_type difficulty);
-    bool check_hash(const crypto::hash &hash, difficulty_type difficulty);
+    bool check_hash(const crypto::hash &hash, uint64_t difficulty);
 
-    difficulty_type next_difficulty(std::vector<uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties, size_t target_seconds);
-} // namespace cryptonote
+    uint64_t next_difficulty(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
+    uint64_t next_difficulty_v2(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
+    uint64_t next_difficulty_v3(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds, bool v4);
+    uint64_t next_difficulty_v6(std::vector<uint64_t> timestamps, std::vector<difficulty_type_128> cumulative_difficulties, size_t target_seconds);
+}

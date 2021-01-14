@@ -13,17 +13,17 @@ namespace lmdb
     //! Helper for grouping typical LMDB DBI options.
     struct table
     {
-        char const *const name;
+        char const* const name;
         const unsigned flags;
-        MDB_cmp_func *const key_cmp;
-        MDB_cmp_func *const value_cmp;
+        MDB_cmp_func const* const key_cmp;
+        MDB_cmp_func const* const value_cmp;
 
         //! \pre `name != nullptr` \return Open table.
-        expect<MDB_dbi> open(MDB_txn &write_txn) const noexcept;
+        expect<MDB_dbi> open(MDB_txn& write_txn) const noexcept;
     };
 
     //! Helper for grouping typical LMDB DBI options when key and value are fixed types.
-    template <typename K, typename V>
+    template<typename K, typename V>
     struct basic_table : table
     {
         using key_type = K;
@@ -35,10 +35,9 @@ namespace lmdb
             return flags | ((flags & MDB_DUPSORT) ? MDB_DUPFIXED : 0);
         }
 
-        constexpr explicit basic_table(const char *name, unsigned flags = 0, MDB_cmp_func value_cmp = nullptr) noexcept
-            : table{name, compute_flags(flags), &lmdb::less<lmdb::native_type<K>>, value_cmp}
-        {
-        }
+        constexpr explicit basic_table(const char* name, unsigned flags = 0, MDB_cmp_func value_cmp = nullptr) noexcept
+          : table{name, compute_flags(flags), &lmdb::less<lmdb::native_type<K>>, value_cmp}
+        {}
 
         /*!
             \tparam U must be same as `V`; used for sanity checking.
@@ -52,7 +51,7 @@ namespace lmdb
             \return Value of type `F` at `offset` within `value` which has
                 type `U`.
         */
-        template <typename U, typename F = U, std::size_t offset = 0>
+        template<typename U, typename F = U, std::size_t offset = 0>
         static expect<F> get_value(MDB_val value) noexcept
         {
             static_assert(std::is_same<U, V>(), "bad MONERO_FIELD?");
@@ -63,7 +62,7 @@ namespace lmdb
                 return {lmdb::error(MDB_BAD_VALSIZE)};
 
             F out;
-            std::memcpy(std::addressof(out), static_cast<char *>(value.mv_data) + offset, sizeof(out));
+            std::memcpy(std::addressof(out), static_cast<char*>(value.mv_data) + offset, sizeof(out));
             return out;
         }
 
@@ -74,8 +73,9 @@ namespace lmdb
             \return A handle to the first key/value in the table linked
                 to `cur` or an empty `key_stream`.
         */
-        template <typename D>
-        expect<key_stream<K, V, D>> static get_key_stream(std::unique_ptr<MDB_cursor, D> cur) noexcept
+        template<typename D>
+        expect<key_stream<K, V, D>>
+        static get_key_stream(std::unique_ptr<MDB_cursor, D> cur) noexcept
         {
             MONERO_PRECOND(cur != nullptr);
 
@@ -98,8 +98,9 @@ namespace lmdb
             \return A handle to the first value at `key` in the table linked
                 to `cur` or an empty `value_stream`.
         */
-        template <typename D>
-        expect<value_stream<V, D>> static get_value_stream(K const &key, std::unique_ptr<MDB_cursor, D> cur) noexcept
+        template<typename D>
+        expect<value_stream<V, D>>
+        static get_value_stream(K const& key, std::unique_ptr<MDB_cursor, D> cur) noexcept
         {
             MONERO_PRECOND(cur != nullptr);
 
@@ -115,4 +116,5 @@ namespace lmdb
             return value_stream<V, D>{std::move(cur)};
         }
     };
-} // namespace lmdb
+} // lmdb
+

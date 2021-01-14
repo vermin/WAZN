@@ -39,9 +39,8 @@ namespace net
     namespace socks
     {
         class client;
-        template <typename>
-        class connect_handler;
+        template<typename> class connect_handler;
         enum class error : int;
         enum class version : std::uint8_t;
-    } // namespace socks
-} // namespace net
+    }
+}

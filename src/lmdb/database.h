@@ -41,7 +41,7 @@ namespace lmdb
     //! Closes LMDB environment handle.
     struct close_env
     {
-        void operator()(MDB_env *ptr) const noexcept
+        void operator()(MDB_env* ptr) const noexcept
         {
             if (ptr)
                 mdb_env_close(ptr);
@@ -51,7 +51,7 @@ namespace lmdb
     using environment = std::unique_ptr<MDB_env, close_env>;
 
     //! \return LMDB environment at `path` with a max of `max_dbs` tables.
-    expect<environment> open_environment(const char *path, MDB_dbi max_dbs) noexcept;
+    expect<environment> open_environment(const char* path, MDB_dbi max_dbs) noexcept;
 
     //! Context given to LMDB.
     struct context
@@ -67,20 +67,20 @@ namespace lmdb
         context ctx;
 
         //! \return The LMDB environment associated with the object.
-        MDB_env *handle() const noexcept { return env.get(); }
+        MDB_env* handle() const noexcept { return env.get(); }
 
         expect<write_txn> do_create_txn(unsigned int flags) noexcept;
 
-    public:
+    public: 
         database(environment env);
 
-        database(database &&) = delete;
-        database(database const &) = delete;
+        database(database&&) = delete;
+        database(database const&) = delete;
 
         virtual ~database() noexcept;
 
-        database &operator=(database &&) = delete;
-        database &operator=(database const &) = delete;
+        database& operator=(database&&) = delete;
+        database& operator=(database const&) = delete;
 
         /*!
             Resize the memory map for the LMDB environment. Will block until
@@ -109,8 +109,8 @@ namespace lmdb
 
             \return The result of calling `f`.
         */
-        template <typename F>
-        typename std::result_of<F(MDB_txn &)>::type try_write(F f, unsigned attempts = 3)
+        template<typename F>
+        typename std::result_of<F(MDB_txn&)>::type try_write(F f, unsigned attempts = 3)
         {
             for (unsigned i = 0; i < attempts; ++i)
             {
@@ -134,4 +134,5 @@ namespace lmdb
             return {lmdb::error(MDB_MAP_FULL)};
         }
     };
-} // namespace lmdb
+} // lmdb
+
