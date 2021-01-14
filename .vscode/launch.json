@@ -1,0 +1,291 @@
+{
+    "version": "0.9.9",
+    "configurations": [
+        {
+             "name": "Mainnet: Node",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/waznd",
+            "args": ["--log-level", "1"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Mainnet: Cli Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
+            "args": [
+                "--wallet-file", "~/.wazn/wallets/angrywasp",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Mainnet: Rpc Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-rpc",
+            "args": [
+                "--rpc-bind-port", "11787",
+                "--daemon-address", "127.0.0.1:11786",
+                "--disable-rpc-login",
+                "--wallet-file", "~/.wazn/wallets/angrywasp"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Node",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/waznd",
+            "args": [
+                "--data-dir", "${workspaceFolder}/db",
+                "--testnet",
+                "--log-level", "2",
+                "--allow-local-ip",
+                "--offline"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Cli Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
+            "args": [
+                "--testnet",
+                "--wallet-file", "~/.wazn/wallets/angrywasp-testnet",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Rpc Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-rpc",
+            "args": [
+                "--testnet",
+                "--rpc-bind-port", "33787",
+                "--daemon-address", "127.0.0.1:22786",
+                "--disable-rpc-login",
+                "--wallet-file", "~/.wazn/wallets/angrywasp-testnet",
+                "--prompt-for-password"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Stagenet: Node",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/waznd",
+            "args": [
+                "--data-dir", "${workspaceFolder}/db",
+                "--stagenet",
+                "--log-level", "2",
+                "--allow-local-ip",
+                "--offline"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Stagenet: Cli Wallet",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
+            "args": [
+                "--stagenet",
+                "--wallet-file", "${workspaceFolder}/db/t1",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Ledger",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
+            "args": [
+                "--testnet",
+                "--hw-device", "Ledger",
+                "--wallet-file", "~/.wazn/wallets/ledger",
+                "--password", "''",
+            ],
+            "stopAtEntry": false,
+
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Testnet: Ledger Restore",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-wallet-cli",
+            "args": [
+                "--testnet",
+                "--generate-from-device", "~/.wazn/wallets/ledger",
+                "--restore-height", "1",
+                "--password", "''",
+            ],
+            "preLaunchTask": "delete-hw-wallet",
+            "stopAtEntry": false,
+
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true,
+                }
+            ]
+        },
+        {
+            "name": "Utility: Prune",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-blockchain-prune",
+            "args": [
+                "--data-dir", "${workspaceFolder}/db",
+                "--stagenet",
+                "--log-level", "2",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Utility: Export Quicksync",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/builder/output/linux/debug-aes/bin/wazn-quicksync-export",
+            "args": [
+                "--output-file", "${workspaceFolder}/quicksync.raw",
+                "--log-level", "2",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+    ]
+}

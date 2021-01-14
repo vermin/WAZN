@@ -181,7 +181,8 @@ namespace config
     uint16_t const P2P_DEFAULT_PORT = 11786;
     uint16_t const RPC_DEFAULT_PORT = 11787;
     boost::uuids::uuid const NETWORK_ID = {{0x12, 0x30, 0xF1, 0x71, 0x61, 0x04, 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x12}};
-    std::string const GENESIS_TX = "010a01ff0001ffffffffffff0f029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880712101abf318a3dc8d66a0263839cffce83daa85963a27635a608a2ba9973055bcc8e400";
+    std::string const GENESIS_TX = "";
+
     uint32_t const GENESIS_NONCE = 10000;
 
     // Hash domain separators
@@ -200,8 +201,8 @@ namespace config
     const unsigned char HASH_KEY_CLSAG_AGG_1[] = "CLSAG_agg_1";
     const char HASH_KEY_MESSAGE_SIGNING[] = "MoneroMessageSignature";
 
-    std::string const HF_MIN_VERSION = "0.2.0.0";
-    std::string const MIN_VERSION = "0.2.0.0";
+    std::string const HF_MIN_VERSION = "0.9.9.0";
+    std::string const MIN_VERSION = "0.9.9.0";
 
     static const hard_fork hard_forks[] = {
         {1, 1},
