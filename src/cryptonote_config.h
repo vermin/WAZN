@@ -82,15 +82,15 @@
 #define DYNAMIC_FEE_PER_KB_BASE_BLOCK_REWARD                            ((uint64_t)10000000000000)
 
 #define DIFFICULTY_TARGET                                               120
-#define DIFFICULTY_WINDOW                                               120
+#define DIFFICULTY_WINDOW                                               240
 #define DIFFICULTY_LAG                                                  15
 #define DIFFICULTY_CUT                                                  60
-#define DIFFICULTY_BLOCKS_COUNT                                         DIFFICULTY_WINDOW + DIFFICULTY_LAG
+#define DIFFICULTY_BLOCKS_COUNT                                         (DIFFICULTY_WINDOW + DIFFICULTY_LAG)
 
 #define DIFFICULTY_BLOCKS_ESTIMATE_TIMESPAN                             DIFFICULTY_TARGET
-#define DIFFICULTY_WINDOW_V2                                            17
+#define DIFFICULTY_WINDOW_V2                                            120
 #define DIFFICULTY_CUT_V2                                               6
-#define DIFFICULTY_BLOCKS_COUNT_V2                                      DIFFICULTY_WINDOW_V2 + DIFFICULTY_CUT_V2 * 2
+#define DIFFICULTY_BLOCKS_COUNT_V2                                      (DIFFICULTY_WINDOW_V2 + DIFFICULTY_CUT_V2 * 2)
 
 #define DIFFICULTY_WINDOW_V3                                            60
 #define DIFFICULTY_BLOCKS_COUNT_V3                                      DIFFICULTY_WINDOW_V3
@@ -98,7 +98,7 @@
 #define DIFFICULTY_WINDOW_V6                                            60
 #define DIFFICULTY_BLOCKS_COUNT_V6                                      DIFFICULTY_WINDOW_V6 + 1
 
-#define CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V1                   DIFFICULTY_TARGET *CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS
+#define CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_SECONDS_V1                   DIFFICULTY_TARGET * CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS
 #define CRYPTONOTE_LOCKED_TX_ALLOWED_DELTA_BLOCKS                       1
 
 #define BLOCKS_IDS_SYNCHRONIZING_DEFAULT_COUNT                          10000
