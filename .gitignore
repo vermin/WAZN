@@ -8,3 +8,15 @@ db
 external/miniupnpc/Makefile
 miniupnpcstrings.h
 version/
+external/curl
+external/miniupnp
+external/rapidjson
+external/unbound
+external/curl
+external/miniupnp
+external/rapidjson
+external/unbound
+external/curl
+external/miniupnp
+external/rapidjson
+external/unbound
