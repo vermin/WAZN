@@ -63,7 +63,7 @@ set(daemon_private_headers
   ../p2p/p2p_protocol_defs.h
   ../p2p/stdafx.h)
 
-waznd_private_headers(daemon
+wazn_private_headers(daemon
   ${daemon_private_headers})
 wazn_add_executable(daemon
   ${daemon_sources}

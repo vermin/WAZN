@@ -142,7 +142,7 @@ foreach(BENCH IN LISTS WAZN_WALLET_CRYPTO_BENCH)
     message(FATAL_ERROR "Invalid WAZN_WALLET_CRYPTO_BENCH option ${BENCH}")
   endif ()
 
-  wazn_crypto_get_target(${BENCH} BENCH_LIBRARY)
+  monero_crypto_get_target(${BENCH} BENCH_LIBRARY)
   list(APPEND BENCH_OBJECTS $<TARGET_OBJECTS:${BENCH_LIBRARY}>)
 
   wazn_crypto_get_namespace(${BENCH} BENCH_NAMESPACE)
