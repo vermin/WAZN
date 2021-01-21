@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -26,7 +27,7 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
-#if defined(HAVE_HIDAPI) 
+#if defined(HAVE_HIDAPI)
 
 #include <boost/scope_exit.hpp>
 #include "log.hpp"
@@ -34,14 +35,14 @@
 
 namespace hw {
   namespace io {
- 
-    #undef MONERO_DEFAULT_LOG_CATEGORY
-    #define MONERO_DEFAULT_LOG_CATEGORY "device.io"
- 
-    #define ASSERT_X(exp,msg)    CHECK_AND_ASSERT_THROW_MES(exp, msg); 
+
+    #undef WAZN_DEFAULT_LOG_CATEGORY
+    #define WAZN_DEFAULT_LOG_CATEGORY "device.io"
+
+    #define ASSERT_X(exp,msg)    CHECK_AND_ASSERT_THROW_MES(exp, msg);
 
     #define MAX_BLOCK  64
-    
+
     static std::string safe_hid_error(hid_device *hwdev) {
       if (hwdev) {
         const wchar_t* error_wstr = hid_error(hwdev);
@@ -69,10 +70,10 @@ namespace hw {
       return std::string("NULL path");
     }
 
-    device_io_hid::device_io_hid(unsigned short c, unsigned char t, unsigned int ps, unsigned int to) : 
-      channel(c), 
-      tag(t), 
-      packet_size(ps), 
+    device_io_hid::device_io_hid(unsigned short c, unsigned char t, unsigned int ps, unsigned int to) :
+      channel(c),
+      tag(t),
+      packet_size(ps),
       timeout(to),
       usb_vid(0),
       usb_pid(0),
@@ -89,7 +90,7 @@ namespace hw {
         MDEBUG( "HID " << (read?"<":">") <<" : "<<strbuffer);
       }
     }
- 
+
     void device_io_hid::init() {
       int r;
       r = hid_init();
@@ -107,7 +108,7 @@ namespace hw {
       for (auto p: hcpV) {
         if (this->connect(p.vid, p.pid, p.interface_number, p.usage_page)) {
           return;
-        }        
+        }
       }
       ASSERT_X(false, "No device found");
     }
@@ -212,7 +213,7 @@ namespace hw {
       }
       ASSERT_X(hid_ret>=0, "Unable to read hidapi response. Error "+std::to_string(result)+": "+ safe_hid_error(this->usb_device));
       result = (unsigned int)hid_ret;
-      io_hid_log(1, buffer, result); 
+      io_hid_log(1, buffer, result);
       offset = MAX_BLOCK;
       //parse first response and get others if any
       for (;;) {
@@ -225,7 +226,7 @@ namespace hw {
         result = (unsigned int)hid_ret;
         io_hid_log(1, buffer + offset, result);
         offset += MAX_BLOCK;
-      }      
+      }
       return result;
     }
 
@@ -304,7 +305,7 @@ namespace hw {
       unsigned int val;
 
       //end?
-      if ((data == NULL) || (data_len < 7 + 5)) { 
+      if ((data == NULL) || (data_len < 7 + 5)) {
         return 0;
       }
 
@@ -314,7 +315,7 @@ namespace hw {
       ASSERT_X(val == this->channel, "Wrong Channel");
       val =  data[offset];
       offset++;
-      ASSERT_X(val == this->tag, "Wrong TAG");      
+      ASSERT_X(val == this->tag, "Wrong TAG");
       val = (data[offset]<<8) + data[offset+1];
       offset += 2;
       ASSERT_X(val == sequence_idx, "Wrong sequence_idx");
@@ -340,7 +341,7 @@ namespace hw {
         ASSERT_X(val == this->channel, "Wrong Channel");
         val =  data[offset];
         offset++;
-        ASSERT_X(val == this->tag, "Wrong TAG");      
+        ASSERT_X(val == this->tag, "Wrong TAG");
         val = (data[offset]<<8) + data[offset+1];
         offset += 2;
         ASSERT_X(val == sequence_idx, "Wrong sequence_idx");
@@ -360,4 +361,4 @@ namespace hw {
   }
 }
 
-#endif //#if defined(HAVE_HIDAPI) 
+#endif //#if defined(HAVE_HIDAPI)

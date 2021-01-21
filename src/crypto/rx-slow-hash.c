@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -83,7 +84,7 @@ static inline int disabled_flags(void) {
     return flags;
   }
 
-  const char *env = getenv("MONERO_RANDOMX_UMASK");
+  const char *env = getenv("WAZN_RANDOMX_UMASK");
   if (!env) {
     flags = 0;
   }

@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -32,7 +33,7 @@
 #include <string>
 #include <ctime>
 
-namespace Monero {
+namespace Wazn {
 
 class TransactionHistoryImpl;
 
@@ -84,4 +85,4 @@ private:
 
 } // namespace
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

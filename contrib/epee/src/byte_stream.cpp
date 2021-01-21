@@ -1,4 +1,5 @@
-// Copyright (c) 2020, The Monero Project
+// Copyright (c) 2019-2021 WAZN Project
+// Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
 //

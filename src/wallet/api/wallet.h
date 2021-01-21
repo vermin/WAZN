@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -40,7 +41,7 @@
 #include <boost/thread/condition_variable.hpp>
 
 
-namespace Monero {
+namespace Wazn {
 class TransactionHistoryImpl;
 class PendingTransactionImpl;
 class UnsignedTransactionImpl;
@@ -73,7 +74,7 @@ public:
     // deprecated: use recoverFromKeysWithPassword() instead
     bool recoverFromKeys(const std::string &path,
                             const std::string &language,
-                            const std::string &address_string, 
+                            const std::string &address_string,
                             const std::string &viewkey_string,
                             const std::string &spendkey_string = "");
     bool recoverFromDevice(const std::string &path,
@@ -120,7 +121,7 @@ public:
     bool refresh() override;
     void refreshAsync() override;
     bool rescanBlockchain() override;
-    void rescanBlockchainAsync() override;    
+    void rescanBlockchainAsync() override;
     void setAutoRefreshInterval(int millis) override;
     int autoRefreshInterval() const override;
     void setRefreshFromBlockHeight(uint64_t refresh_from_block_height) override;
@@ -231,7 +232,7 @@ private:
 
 private:
     friend class PendingTransactionImpl;
-    friend class UnsignedTransactionImpl;    
+    friend class UnsignedTransactionImpl;
     friend class TransactionHistoryImpl;
     friend struct Wallet2CallbackImpl;
     friend class AddressBookImpl;
@@ -276,7 +277,6 @@ private:
 
 } // namespace
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;
 
 #endif
-

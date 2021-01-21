@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -35,7 +36,7 @@
 #include <vector>
 
 
-namespace Monero {
+namespace Wazn {
 
 class WalletImpl;
 class PendingTransactionImpl : public PendingTransaction
@@ -74,4 +75,4 @@ private:
 
 }
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

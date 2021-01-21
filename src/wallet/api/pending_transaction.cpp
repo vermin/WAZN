@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -43,7 +44,7 @@
 
 using namespace std;
 
-namespace Monero {
+namespace Wazn {
 
 PendingTransaction::~PendingTransaction() {}
 
@@ -264,5 +265,4 @@ std::vector<std::string> PendingTransactionImpl::signersKeys() const {
 
 }
 
-namespace Bitmonero = Monero;
-
+namespace Bitwazn = Wazn;

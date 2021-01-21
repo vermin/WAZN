@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -136,7 +137,7 @@ namespace zmq
                all are received or none are. Looking through ZMQ code and
                Github discussions indicates that after part 1 is returned,
                `EAGAIN` cannot be returned to meet these guarantees. Unit tests
-               verify (for the `inproc://` case) that this is the behavior. 
+               verify (for the `inproc://` case) that this is the behavior.
                Therefore, read errors after the first part are treated as a
                failure for the entire message (probably `ETERM`). */
             int operator()(std::string& payload, void* const socket, const int flags) const
@@ -163,7 +164,7 @@ namespace zmq
     expect<std::string> receive(void* const socket, const int flags)
     {
         std::string payload{};
-        MONERO_CHECK(retry_op(do_receive{}, payload, socket, flags));
+        WAZN_CHECK(retry_op(do_receive{}, payload, socket, flags));
         return {std::move(payload)};
     }
 
@@ -179,7 +180,7 @@ namespace zmq
         auto buffer = payload.take_buffer(); // clears `payload` from callee
 
         zmq_msg_t msg{};
-        MONERO_ZMQ_CHECK(zmq_msg_init_data(std::addressof(msg), data, size, epee::release_byte_slice::call, buffer.get()));
+        WAZN_ZMQ_CHECK(zmq_msg_init_data(std::addressof(msg), data, size, epee::release_byte_slice::call, buffer.get()));
         buffer.release(); // zmq will now decrement byte_slice ref-count
 
         expect<void> sent = retry_op(zmq_msg_send, std::addressof(msg), socket, flags);
@@ -189,4 +190,3 @@ namespace zmq
     }
 } // zmq
 } // net
-

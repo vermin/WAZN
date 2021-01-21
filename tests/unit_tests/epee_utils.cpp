@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -70,7 +71,7 @@ namespace
       unsigned(std::is_assignable<Destination, Source&>());
     EXPECT_TRUE(count == 6 || count == 0) <<
       "Mismatch on construction results - " << count << " were true";
-    return count == 6; 
+    return count == 6;
   }
 
   // This is probably stressing the compiler more than the implementation ...
@@ -275,7 +276,7 @@ TEST(Span, Nullptr)
     EXPECT_EQ(0, data.size_bytes());
   };
   check_empty({});
-  check_empty(nullptr); 
+  check_empty(nullptr);
 }
 
 TEST(Span, Writing)
@@ -1405,7 +1406,7 @@ TEST(StringTools, GetIpInt32)
   The existing epee conversion function does not work with 255.255.255.255, for
   the reasons specified in the inet_addr documentation. Consider fixing in a
   future patch. This address is not likely to be used for purposes within
-  monero.
+  WAZN.
   EXPECT_TRUE(epee::string_tools::get_ip_int32_from_string(ip, "255.255.255.255"));
   EXPECT_EQ(htonl(0xffffffff), ip);
 */

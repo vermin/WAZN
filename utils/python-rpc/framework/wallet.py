@@ -1,21 +1,22 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2018 The Monero Project
-# 
+#
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this list of
 #    conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
 #    of conditions and the following disclaimer in the documentation and/or other
 #    materials provided with the distribution.
-# 
+#
 # 3. Neither the name of the copyright holder nor the names of its contributors may be
 #    used to endorse or promote products derived from this software without specific
 #    prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -28,14 +29,14 @@
 
 """Daemon class to make rpc calls and store state."""
 
-from .rpc import JSONRPC 
+from .rpc import JSONRPC
 
 class Wallet(object):
 
     def __init__(self, protocol='http', host='127.0.0.1', port=0, idx=0):
         self.host = host
         self.port = port
-        self.rpc = JSONRPC('{protocol}://{host}:{port}'.format(protocol=protocol, host=host, port=port if port else 18090+idx))
+        self.rpc = JSONRPC('{protocol}://{host}:{port}'.format(protocol=protocol, host=host, port=port if port else 11790+idx))
 
     def transfer(self, destinations, account_index = 0, subaddr_indices = [], priority = 0, ring_size = 0, unlock_time = 0, payment_id = '', get_tx_key = True, do_not_relay = False, get_tx_hex = False, get_tx_metadata = False):
         transfer = {
@@ -53,10 +54,10 @@ class Wallet(object):
                 'get_tx_hex' : get_tx_hex,
                 'get_tx_metadata' : get_tx_metadata,
             },
-            'jsonrpc': '2.0', 
-            'id': '0'    
+            'jsonrpc': '2.0',
+            'id': '0'
         }
-        return self.rpc.send_json_rpc_request(transfer)   
+        return self.rpc.send_json_rpc_request(transfer)
 
     def transfer_split(self, destinations, account_index = 0, subaddr_indices = [], priority = 0, ring_size = 0, unlock_time = 0, payment_id = '', get_tx_key = True, do_not_relay = False, get_tx_hex = False, get_tx_metadata = False):
         transfer = {
@@ -74,10 +75,10 @@ class Wallet(object):
                 'get_tx_hex' : get_tx_hex,
                 'get_tx_metadata' : get_tx_metadata,
             },
-            "jsonrpc": "2.0", 
-            "id": "0"    
+            "jsonrpc": "2.0",
+            "id": "0"
         }
-        return self.rpc.send_json_rpc_request(transfer)   
+        return self.rpc.send_json_rpc_request(transfer)
 
     def get_transfer_by_txid(self, txid, account_index = 0):
         get_transfer_by_txid = {
@@ -86,7 +87,7 @@ class Wallet(object):
                 'txid': txid,
                 'account_index': account_index,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_transfer_by_txid)
@@ -109,7 +110,7 @@ class Wallet(object):
                 'payment_ids': payment_ids,
                 'min_block_height': min_block_height,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_bulk_payments)
@@ -121,7 +122,7 @@ class Wallet(object):
                 'unsigned_txset': unsigned_txset,
                 'multisig_txset': multisig_txset,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(describe_transfer)
@@ -134,7 +135,7 @@ class Wallet(object):
                 'password': password,
                 'language': language
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(create_wallet)
@@ -148,7 +149,7 @@ class Wallet(object):
                 'all_accounts': all_accounts,
                 'strict': strict,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_balance)
@@ -163,8 +164,8 @@ class Wallet(object):
                 'get_tx_hex': get_tx_hex,
                 'get_tx_metadata': get_tx_metadata,
             },
-            'jsonrpc': '2.0', 
-            'id': '0'   
+            'jsonrpc': '2.0',
+            'id': '0'
         }
         return self.rpc.send_json_rpc_request(sweep_dust)
     sweep_unmixable = sweep_dust
@@ -187,7 +188,7 @@ class Wallet(object):
                 'get_tx_hex' : get_tx_hex,
                 'get_tx_metadata' : get_tx_metadata,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(sweep_all)
@@ -220,7 +221,7 @@ class Wallet(object):
                 'account_index' : account_index,
                 'address_index': subaddresses
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_address)
@@ -232,7 +233,7 @@ class Wallet(object):
             'params' : {
                 'label': label
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(create_account)
@@ -257,7 +258,7 @@ class Wallet(object):
                 'index': { 'major': subaddress_index[0], 'minor': subaddress_index[1]},
                 'label': label
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(label_address)
@@ -269,7 +270,7 @@ class Wallet(object):
                 'account_index': account_index,
                 'label': label
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(label_account)
@@ -280,7 +281,7 @@ class Wallet(object):
             'params' : {
                 'address': address
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_address_index)
@@ -291,7 +292,7 @@ class Wallet(object):
             'params' : {
                 'key_type': key_type
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(query_key)
@@ -308,7 +309,7 @@ class Wallet(object):
                 'language': language,
                 'autosave_current': autosave_current,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(restore_deterministic_wallet)
@@ -325,7 +326,7 @@ class Wallet(object):
                 'password': password,
                 'autosave_current': autosave_current,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(generate_from_keys)
@@ -338,7 +339,7 @@ class Wallet(object):
                 'password': password,
                 'autosave_current': autosave_current,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(open_wallet)
@@ -349,7 +350,7 @@ class Wallet(object):
             'params' : {
                 'autosave_current': autosave_current
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(close_wallet)
@@ -369,7 +370,7 @@ class Wallet(object):
     def store(self):
         store = {
             'method': 'store',
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(store)
@@ -387,7 +388,7 @@ class Wallet(object):
             'method': 'refresh',
             'params' : {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(refresh)
@@ -400,7 +401,7 @@ class Wallet(object):
                 'account_index': account_index,
                 'subaddr_indices': subaddr_indices,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(incoming_transfers)
@@ -421,7 +422,7 @@ class Wallet(object):
                 'subaddr_indices': subaddr_indices,
                 'all_accounts': all_accounts,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_transfers)
@@ -433,7 +434,7 @@ class Wallet(object):
                 'standard_address': standard_address,
                 'payment_id': payment_id,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(make_integrated_address)
@@ -444,7 +445,7 @@ class Wallet(object):
             'params' : {
                 'integrated_address': integrated_address,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(split_integrated_address)
@@ -456,7 +457,7 @@ class Wallet(object):
                 'enable': enable,
                 'period': period
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(auto_refresh)
@@ -474,7 +475,7 @@ class Wallet(object):
                 'ssl_allowed_fingerprints': ssl_allowed_fingerprints,
                 'ssl_allow_any_cert': ssl_allow_any_cert,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(set_daemon)
@@ -484,7 +485,7 @@ class Wallet(object):
             'method': 'is_multisig',
             'params' : {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(is_multisig)
@@ -494,7 +495,7 @@ class Wallet(object):
             'method': 'prepare_multisig',
             'params' : {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(prepare_multisig)
@@ -507,7 +508,7 @@ class Wallet(object):
                 'threshold': threshold,
                 'password': password,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(make_multisig)
@@ -531,7 +532,7 @@ class Wallet(object):
                 'multisig_info': multisig_info,
                 'password': password,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(exchange_multisig_keys)
@@ -541,7 +542,7 @@ class Wallet(object):
             'method': 'export_multisig_info',
             'params' : {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(export_multisig_info)
@@ -552,7 +553,7 @@ class Wallet(object):
             'params' : {
                 'info': info
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(import_multisig_info)
@@ -563,7 +564,7 @@ class Wallet(object):
             'params' : {
                 'tx_data_hex': tx_data_hex
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(sign_multisig)
@@ -574,7 +575,7 @@ class Wallet(object):
             'params' : {
                 'tx_data_hex': tx_data_hex
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(submit_multisig)
@@ -587,7 +588,7 @@ class Wallet(object):
                 'export_raw': export_raw,
                 'get_tx_keys': get_tx_keys,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(sign_transfer)
@@ -598,7 +599,7 @@ class Wallet(object):
             'params' : {
                 'tx_data_hex': tx_data_hex,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(submit_transfer)
@@ -609,7 +610,7 @@ class Wallet(object):
             'params' : {
                 'txid': txid,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_tx_key)
@@ -622,7 +623,7 @@ class Wallet(object):
                 'tx_key': tx_key,
                 'address': address,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(check_tx_key)
@@ -635,7 +636,7 @@ class Wallet(object):
                 'address': address,
                 'message': message,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_tx_proof)
@@ -649,7 +650,7 @@ class Wallet(object):
                 'message': message,
                 'signature': signature,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(check_tx_proof)
@@ -688,7 +689,7 @@ class Wallet(object):
                 'amount': amount,
                 'message': message,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_reserve_proof)
@@ -701,7 +702,7 @@ class Wallet(object):
                 'message': message,
                 'signature': signature,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(check_reserve_proof)
@@ -715,7 +716,7 @@ class Wallet(object):
                 'address_index': address_index,
                 'signature_type': signature_type,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(sign)
@@ -728,7 +729,7 @@ class Wallet(object):
                 'address': address,
                 'signature': signature,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(verify)
@@ -736,7 +737,7 @@ class Wallet(object):
     def get_height(self):
         get_height = {
             'method': 'get_height',
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_height)
@@ -748,7 +749,7 @@ class Wallet(object):
             'params': {
                 'hex': hex_,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(relay_tx)
@@ -758,7 +759,7 @@ class Wallet(object):
             'method': 'get_languages',
             'params': {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_languages)
@@ -768,7 +769,7 @@ class Wallet(object):
             'method': 'export_outputs',
             'params': {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(export_outputs)
@@ -779,7 +780,7 @@ class Wallet(object):
             'params': {
                 'outputs_data_hex': outputs_data_hex
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(import_outputs)
@@ -790,7 +791,7 @@ class Wallet(object):
             'params': {
                 'all': all_
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(export_key_images)
@@ -802,7 +803,7 @@ class Wallet(object):
                 'offset': offset,
                 'signed_key_images': signed_key_images,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(import_key_images)
@@ -1084,7 +1085,7 @@ class Wallet(object):
     def get_version(self):
         get_version = {
             'method': 'get_version',
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_version)

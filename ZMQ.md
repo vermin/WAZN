@@ -1,4 +1,4 @@
-# The Current/Future Status of ZMQ in Monero
+# The Current/Future Status of ZMQ in WAZN
 
 ## ZMQ Pub/Sub
 Client `ZMQ_SUB` sockets must "subscribe" to topics before it receives any data.
@@ -57,5 +57,3 @@ The Monero daemon will send a `txpool_add` pub exactly once for each
 transaction, even after a reorg or restarts. Clients should use the
 `GetTransactionPool` after a reorg to get all transactions that have been put
 back into the tx pool or been invalidated due to a double-spend.
-
-

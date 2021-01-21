@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2016-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -77,11 +78,11 @@ private:
 void set_performance_timer_log_level(el::Level level);
 
 #define PERF_TIMER_NAME(name) pt_##name
-#define PERF_TIMER_UNIT(name, unit) tools::LoggingPerformanceTimer PERF_TIMER_NAME(name)(#name, "perf." MONERO_DEFAULT_LOG_CATEGORY, unit, tools::performance_timer_log_level)
-#define PERF_TIMER_UNIT_L(name, unit, l) tools::LoggingPerformanceTimer PERF_TIMER_NAME(name)t_##name(#name, "perf." MONERO_DEFAULT_LOG_CATEGORY, unit, l)
+#define PERF_TIMER_UNIT(name, unit) tools::LoggingPerformanceTimer PERF_TIMER_NAME(name)(#name, "perf." WAZN_DEFAULT_LOG_CATEGORY, unit, tools::performance_timer_log_level)
+#define PERF_TIMER_UNIT_L(name, unit, l) tools::LoggingPerformanceTimer PERF_TIMER_NAME(name)t_##name(#name, "perf." WAZN_DEFAULT_LOG_CATEGORY, unit, l)
 #define PERF_TIMER(name) PERF_TIMER_UNIT(name, 1000000)
 #define PERF_TIMER_L(name, l) PERF_TIMER_UNIT_L(name, 1000000, l)
-#define PERF_TIMER_START_UNIT(name, unit) std::unique_ptr<tools::LoggingPerformanceTimer> PERF_TIMER_NAME(name)(new tools::LoggingPerformanceTimer(#name, "perf." MONERO_DEFAULT_LOG_CATEGORY, unit, el::Level::Info))
+#define PERF_TIMER_START_UNIT(name, unit) std::unique_ptr<tools::LoggingPerformanceTimer> PERF_TIMER_NAME(name)(new tools::LoggingPerformanceTimer(#name, "perf." WAZN_DEFAULT_LOG_CATEGORY, unit, el::Level::Info))
 #define PERF_TIMER_START(name) PERF_TIMER_START_UNIT(name, 1000000)
 #define PERF_TIMER_STOP(name) do { PERF_TIMER_NAME(name).reset(NULL); } while(0)
 #define PERF_TIMER_PAUSE(name) PERF_TIMER_NAME(name).pause()

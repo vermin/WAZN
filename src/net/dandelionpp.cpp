@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -107,7 +108,7 @@ namespace dandelionpp
     {
         // max value is used by `select_stem` as error case
         if (stems == std::numeric_limits<std::size_t>::max())
-            MONERO_THROW(common_error::kInvalidArgument, "stems value cannot be max size_t");
+            WAZN_THROW(common_error::kInvalidArgument, "stems value cannot be max size_t");
 
         usage_count_.resize(stems);
         if (stems < out_mapping_.size())

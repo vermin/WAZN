@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -47,8 +48,8 @@
 #include "net/dandelionpp.h"
 #include "p2p/net_node.h"
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "net.p2p.tx"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "net.p2p.tx"
 
 namespace
 {

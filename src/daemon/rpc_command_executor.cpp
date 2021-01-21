@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -43,8 +44,8 @@
 #include <ctime>
 #include <string>
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "daemon"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "daemon"
 
 namespace daemonize {
 
@@ -614,8 +615,8 @@ bool t_rpc_command_executor::mining_status() {
     uint64_t daily = 86400ull / mres.block_target * mres.block_reward * ratio;
     uint64_t monthly = 86400ull / mres.block_target * 30.5 * mres.block_reward * ratio;
     uint64_t yearly = 86400ull / mres.block_target * 356 * mres.block_reward * ratio;
-    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " monero daily, "
-        << cryptonote::print_money(monthly) << " monero monthly, " << cryptonote::print_money(yearly) << " yearly";
+    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " WAZN daily, "
+        << cryptonote::print_money(monthly) << " WAZN monthly, " << cryptonote::print_money(yearly) << " yearly";
   }
 
   return true;
@@ -648,13 +649,13 @@ bool t_rpc_command_executor::print_connections() {
       << std::setw(8) << "Type"
       << std::setw(6) << "SSL"
       << std::setw(20) << "Peer id"
-      << std::setw(20) << "Support Flags"      
+      << std::setw(20) << "Support Flags"
       << std::setw(30) << "Recv/Sent (inactive,sec)"
       << std::setw(25) << "State"
       << std::setw(20) << "Livetime(sec)"
       << std::setw(12) << "Down (kB/s)"
       << std::setw(14) << "Down(now)"
-      << std::setw(10) << "Up (kB/s)" 
+      << std::setw(10) << "Up (kB/s)"
       << std::setw(13) << "Up(now)"
       << std::endl;
 
@@ -663,7 +664,7 @@ bool t_rpc_command_executor::print_connections() {
     std::string address = info.incoming ? "INC " : "OUT ";
     address += info.ip + ":" + info.port;
     //std::string in_out = info.incoming ? "INC " : "OUT ";
-    tools::msg_writer() 
+    tools::msg_writer()
      //<< std::setw(30) << std::left << in_out
      << std::setw(30) << std::left << address
      << std::setw(8) << (get_address_type_name((epee::net_utils::address_type)info.address_type))
@@ -677,11 +678,11 @@ bool t_rpc_command_executor::print_connections() {
      << std::setw(14) << info.current_download
      << std::setw(10) << info.avg_upload
      << std::setw(13) << info.current_upload
-     
+
      << std::left << (info.localhost ? "[LOCALHOST]" : "")
      << std::left << (info.local_ip ? "[LAN]" : "");
     //tools::msg_writer() << boost::format("%-25s peer_id: %-25s %s") % address % info.peer_id % in_out;
-    
+
   }
 
   return true;
@@ -1359,7 +1360,7 @@ bool t_rpc_command_executor::start_mining(cryptonote::account_public_address add
   req.threads_count = num_threads;
   req.do_background_mining = do_background_mining;
   req.ignore_battery = ignore_battery;
-  
+
   std::string fail_message = "Mining did not start";
 
   if (m_is_rpc)
@@ -1415,8 +1416,8 @@ bool t_rpc_command_executor::stop_daemon()
 //# ifdef WIN32
 //    // Stop via service API
 //    // TODO - this is only temporary!  Get rid of hard-coded constants!
-//    bool ok = windows::stop_service("BitMonero Daemon");
-//    ok = windows::uninstall_service("BitMonero Daemon");
+//    bool ok = windows::stop_service("Bitwazn Daemon");
+//    ok = windows::uninstall_service("Bitwazn Daemon");
 //    //bool ok = windows::stop_service(SERVICE_NAME);
 //    //ok = windows::uninstall_service(SERVICE_NAME);
 //    if (ok)
@@ -1460,10 +1461,10 @@ bool t_rpc_command_executor::print_status()
   bool daemon_is_alive = m_rpc_client->check_connection();
 
   if(daemon_is_alive) {
-    tools::success_msg_writer() << "monerod is running";
+    tools::success_msg_writer() << "waznd is running";
   }
   else {
-    tools::fail_msg_writer() << "monerod is NOT running";
+    tools::fail_msg_writer() << "waznd is NOT running";
   }
 
   return true;
@@ -1586,12 +1587,12 @@ bool t_rpc_command_executor::out_peers(bool set, uint32_t limit)
 {
 	cryptonote::COMMAND_RPC_OUT_PEERS::request req;
 	cryptonote::COMMAND_RPC_OUT_PEERS::response res;
-	
+
 	epee::json_rpc::error error_resp;
 
 	req.set = set;
 	req.out_peers = limit;
-	
+
 	std::string fail_message = "Unsuccessful";
 
 	if (m_is_rpc)
@@ -1713,7 +1714,7 @@ bool t_rpc_command_executor::print_bans()
             tools::msg_writer() << i->host << " banned for " << i->seconds << " seconds";
         }
     }
-    else 
+    else
         tools::msg_writer() << "No IPs are banned";
 
     return true;

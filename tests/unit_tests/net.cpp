@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -70,7 +71,7 @@
 namespace
 {
     static constexpr const char v2_onion[] =
-        "xmrto2bturnore26.onion";
+        "waznto2bturnore26.onion";
     static constexpr const char v3_onion[] =
         "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopnpyyd.onion";
 }
@@ -162,7 +163,7 @@ TEST(tor_address, valid)
     EXPECT_FALSE(address2.less(*address1));
     EXPECT_FALSE(address1->less(address2));
 
-    address2 = MONERO_UNWRAP(net::tor_address::make(std::string{v2_onion} + ":6545"));
+    address2 = WAZN_UNWRAP(net::tor_address::make(std::string{v2_onion} + ":6545"));
 
     EXPECT_EQ(6545, address2.port());
     EXPECT_STREQ(v2_onion, address2.host_str());
@@ -179,7 +180,7 @@ TEST(tor_address, valid)
     EXPECT_FALSE(address2.less(*address1));
     EXPECT_TRUE(address1->less(address2));
 
-    net::tor_address address3 = MONERO_UNWRAP(net::tor_address::make(std::string{v3_onion} + ":", 65535));
+    net::tor_address address3 = WAZN_UNWRAP(net::tor_address::make(std::string{v3_onion} + ":", 65535));
 
     EXPECT_EQ(65535, address3.port());
     EXPECT_STREQ(v3_onion, address3.host_str());
@@ -210,8 +211,8 @@ TEST(tor_address, valid)
 
 TEST(tor_address, generic_network_address)
 {
-    const epee::net_utils::network_address tor1{MONERO_UNWRAP(net::tor_address::make(v3_onion, 8080))};
-    const epee::net_utils::network_address tor2{MONERO_UNWRAP(net::tor_address::make(v3_onion, 8080))};
+    const epee::net_utils::network_address tor1{WAZN_UNWRAP(net::tor_address::make(v3_onion, 8080))};
+    const epee::net_utils::network_address tor2{WAZN_UNWRAP(net::tor_address::make(v3_onion, 8080))};
     const epee::net_utils::network_address ip{epee::net_utils::ipv4_network_address{100, 200}};
 
     EXPECT_EQ(tor1, tor2);
@@ -247,7 +248,7 @@ TEST(tor_address, epee_serializev_v2)
 {
     std::string buffer{};
     {
-        test_command_tor command{MONERO_UNWRAP(net::tor_address::make(v2_onion, 10))};
+        test_command_tor command{WAZN_UNWRAP(net::tor_address::make(v2_onion, 10))};
         EXPECT_FALSE(command.tor.is_unknown());
         EXPECT_NE(net::tor_address{}, command.tor);
         EXPECT_STREQ(v2_onion, command.tor.host_str());
@@ -298,7 +299,7 @@ TEST(tor_address, epee_serializev_v3)
 {
     std::string buffer{};
     {
-        test_command_tor command{MONERO_UNWRAP(net::tor_address::make(v3_onion, 10))};
+        test_command_tor command{WAZN_UNWRAP(net::tor_address::make(v3_onion, 10))};
         EXPECT_FALSE(command.tor.is_unknown());
         EXPECT_NE(net::tor_address{}, command.tor);
         EXPECT_STREQ(v3_onion, command.tor.host_str());
@@ -400,7 +401,7 @@ TEST(tor_address, boost_serialize_v2)
 {
     std::string buffer{};
     {
-        const net::tor_address tor = MONERO_UNWRAP(net::tor_address::make(v2_onion, 10));
+        const net::tor_address tor = WAZN_UNWRAP(net::tor_address::make(v2_onion, 10));
         EXPECT_FALSE(tor.is_unknown());
         EXPECT_NE(net::tor_address{}, tor);
         EXPECT_STREQ(v2_onion, tor.host_str());
@@ -435,7 +436,7 @@ TEST(tor_address, boost_serialize_v3)
 {
     std::string buffer{};
     {
-        const net::tor_address tor = MONERO_UNWRAP(net::tor_address::make(v3_onion, 10));
+        const net::tor_address tor = WAZN_UNWRAP(net::tor_address::make(v3_onion, 10));
         EXPECT_FALSE(tor.is_unknown());
         EXPECT_NE(net::tor_address{}, tor);
         EXPECT_STREQ(v3_onion, tor.host_str());
@@ -531,7 +532,7 @@ namespace
     static constexpr const char b32_i2p[] =
         "vww6ybal4bd7szmgncyruucpgfkqahzddi37ktceo3ah7ngmcopn.b32.i2p";
     static constexpr const char b32_i2p_2[] =
-        "xmrto2bturnore26xmrto2bturnore26xmrto2bturnore26xmr2.b32.i2p";
+        "waznto2bturnore26xmrto2bturnore26xmrto2bturnore26xmr2.b32.i2p";
 }
 
 TEST(i2p_address, constants)
@@ -617,7 +618,7 @@ TEST(i2p_address, valid)
     EXPECT_FALSE(address2.less(*address1));
     EXPECT_FALSE(address1->less(address2));
 
-    address2 = MONERO_UNWRAP(net::i2p_address::make(std::string{b32_i2p_2} + ":6545"));
+    address2 = WAZN_UNWRAP(net::i2p_address::make(std::string{b32_i2p_2} + ":6545"));
 
     EXPECT_EQ(6545, address2.port());
     EXPECT_STREQ(b32_i2p_2, address2.host_str());
@@ -634,7 +635,7 @@ TEST(i2p_address, valid)
     EXPECT_FALSE(address2.less(*address1));
     EXPECT_TRUE(address1->less(address2));
 
-    net::i2p_address address3 = MONERO_UNWRAP(net::i2p_address::make(std::string{b32_i2p} + ":", 65535));
+    net::i2p_address address3 = WAZN_UNWRAP(net::i2p_address::make(std::string{b32_i2p} + ":", 65535));
 
     EXPECT_EQ(65535, address3.port());
     EXPECT_STREQ(b32_i2p, address3.host_str());
@@ -665,8 +666,8 @@ TEST(i2p_address, valid)
 
 TEST(i2p_address, generic_network_address)
 {
-    const epee::net_utils::network_address i2p1{MONERO_UNWRAP(net::i2p_address::make(b32_i2p, 8080))};
-    const epee::net_utils::network_address i2p2{MONERO_UNWRAP(net::i2p_address::make(b32_i2p, 8080))};
+    const epee::net_utils::network_address i2p1{WAZN_UNWRAP(net::i2p_address::make(b32_i2p, 8080))};
+    const epee::net_utils::network_address i2p2{WAZN_UNWRAP(net::i2p_address::make(b32_i2p, 8080))};
     const epee::net_utils::network_address ip{epee::net_utils::ipv4_network_address{100, 200}};
 
     EXPECT_EQ(i2p1, i2p2);
@@ -702,7 +703,7 @@ TEST(i2p_address, epee_serializev_b32)
 {
     std::string buffer{};
     {
-        test_command_i2p command{MONERO_UNWRAP(net::i2p_address::make(b32_i2p, 10))};
+        test_command_i2p command{WAZN_UNWRAP(net::i2p_address::make(b32_i2p, 10))};
         EXPECT_FALSE(command.i2p.is_unknown());
         EXPECT_NE(net::i2p_address{}, command.i2p);
         EXPECT_STREQ(b32_i2p, command.i2p.host_str());
@@ -804,7 +805,7 @@ TEST(i2p_address, boost_serialize_b32)
 {
     std::string buffer{};
     {
-        const net::i2p_address i2p = MONERO_UNWRAP(net::i2p_address::make(b32_i2p, 10));
+        const net::i2p_address i2p = WAZN_UNWRAP(net::i2p_address::make(b32_i2p, 10));
         EXPECT_FALSE(i2p.is_unknown());
         EXPECT_NE(net::i2p_address{}, i2p);
         EXPECT_STREQ(b32_i2p, i2p.host_str());
@@ -1660,7 +1661,7 @@ TEST(zmq, error_codes)
     EXPECT_TRUE(
         []() -> expect<void>
         {
-            MONERO_ZMQ_CHECK(zmq_msg_send(nullptr, nullptr, 0));
+            WAZN_ZMQ_CHECK(zmq_msg_send(nullptr, nullptr, 0));
             return success();
         }().matches(std::errc::not_a_socket)
     );
@@ -1668,7 +1669,7 @@ TEST(zmq, error_codes)
     bool thrown = false;
     try
     {
-        MONERO_ZMQ_THROW("stuff");
+        WAZN_ZMQ_THROW("stuff");
     }
     catch (const std::system_error& e)
     {
@@ -1811,4 +1812,3 @@ TEST(zmq, read_write_termination)
     ASSERT_FALSE(bool(received));
     EXPECT_EQ(net::zmq::make_error_code(ETERM), received.error());
 }
-

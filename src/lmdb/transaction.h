@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 // All rights reserved.
 //
@@ -32,7 +33,7 @@
 #include "lmdb/error.h"
 
 //! Uses C++ type system to differentiate between cursors
-#define MONERO_CURSOR(name)                                    \
+#define WAZN_CURSOR(name)                                    \
     struct close_ ## name : ::lmdb::close_cursor {};           \
     using name = std::unique_ptr< MDB_cursor, close_ ## name >;
 
@@ -52,7 +53,7 @@ namespace lmdb
         associated `context`, and aborts a LMDB transaction (`mdb_txn_abort`).
     */
     struct release_read_txn
-    { 
+    {
         void operator()(MDB_txn* ptr) const noexcept;
         // implementation in database.cpp
     };
@@ -83,7 +84,7 @@ namespace lmdb
     open_cursor(MDB_txn& txn, MDB_dbi tbl) noexcept
     {
         MDB_cursor* cur = nullptr;
-        MONERO_LMDB_CHECK(mdb_cursor_open(&txn, tbl, &cur));
+        WAZN_LMDB_CHECK(mdb_cursor_open(&txn, tbl, &cur));
         return std::unique_ptr<MDB_cursor, D>{cur};
     }
 

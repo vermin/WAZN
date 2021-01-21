@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018-2020, The Monero Project
 //
 // All rights reserved.
@@ -239,7 +240,7 @@ namespace socks
         }
 
         static_assert(sizeof(v4_header) < sizeof(buffer_), "buffer size too small for request");
-        static_assert(0 < sizeof(buffer_), "buffer size too small for null termination"); 
+        static_assert(0 < sizeof(buffer_), "buffer size too small for null termination");
 
         // version 4
         const v4_header temp{4, v4_connect_command, address.port(), boost::endian::big_to_native(address.ip())};

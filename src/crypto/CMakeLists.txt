@@ -1,3 +1,4 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -80,9 +81,9 @@ set(crypto_private_headers
   CryptonightR_JIT.h
   CryptonightR_template.h)
 
-monero_private_headers(cncrypto
+wazn_private_headers(cncrypto
   ${crypto_private_headers})
-monero_add_library(cncrypto
+wazn_add_library(cncrypto
   ${crypto_sources}
   ${crypto_headers}
   ${crypto_private_headers})
@@ -106,7 +107,7 @@ if (ARM)
 endif()
 
 # Because of the way Qt works on android with JNI, the code does not live in the main android thread
-# So this code runs with a 1 MB default stack size. 
+# So this code runs with a 1 MB default stack size.
 # This will force the use of the heap for the allocation of the scratchpad
 if (ANDROID OR IOS)
   if( BUILD_GUI_DEPS )

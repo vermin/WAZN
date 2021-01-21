@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -31,8 +32,8 @@
 #include "net/parse.h"
 #include "daemon/command_parser_executor.h"
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "daemon"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "daemon"
 
 namespace daemonize {
 
@@ -207,7 +208,7 @@ bool t_command_parser_executor::set_log_level(const std::vector<std::string>& ar
   }
 }
 
-bool t_command_parser_executor::print_height(const std::vector<std::string>& args) 
+bool t_command_parser_executor::print_height(const std::vector<std::string>& args)
 {
   if (!args.empty()) return false;
 
@@ -386,13 +387,13 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
   if(nettype != cryptonote::MAINNET)
     std::cout << "Mining to a " << (nettype == cryptonote::TESTNET ? "testnet" : "stagenet") << " address, make sure this is intentional!" << std::endl;
   uint64_t threads_count = 1;
-  bool do_background_mining = false;  
-  bool ignore_battery = false;  
+  bool do_background_mining = false;
+  bool ignore_battery = false;
   if(args.size() > 4)
   {
     return false;
   }
-  
+
   if(args.size() == 4)
   {
     if(args[3] == "true" || command_line::is_yes(args[3]) || args[3] == "1")
@@ -403,8 +404,8 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
     {
       return false;
     }
-  }  
-  
+  }
+
   if(args.size() >= 3)
   {
     if(args[2] == "true" || command_line::is_yes(args[2]) || args[2] == "1")
@@ -416,7 +417,7 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
       return false;
     }
   }
-  
+
   if(args.size() >= 2)
   {
     if (args[1] == "auto" || args[1] == "autodetect")
@@ -526,12 +527,12 @@ bool t_command_parser_executor::out_peers(const std::vector<std::string>& args)
 			set = true;
 		}
 	}
-	  
+
 	catch(const std::exception& ex) {
 		_erro("stoi exception");
 		return false;
 	}
-	
+
 	return m_executor.out_peers(set, limit);
 }
 
@@ -868,10 +869,10 @@ bool t_command_parser_executor::prune_blockchain(const std::vector<std::string>&
 
   if (args.empty() || args[0] != "confirm")
   {
-    std::cout << "Warning: pruning from within monerod will not shrink the database file size." << std::endl;
+    std::cout << "Warning: pruning from within waznd will not shrink the database file size." << std::endl;
     std::cout << "Instead, parts of the file will be marked as free, so the file will not grow" << std::endl;
     std::cout << "until that newly free space is used up. If you want a smaller file size now," << std::endl;
-    std::cout << "exit monerod and run monero-blockchain-prune (you will temporarily need more" << std::endl;
+    std::cout << "exit waznd and run wazn-blockchain-prune (you will temporarily need more" << std::endl;
     std::cout << "disk space for the database conversion though). If you are OK with the database" << std::endl;
     std::cout << "file keeping the same size, re-run this command with the \"confirm\" parameter." << std::endl;
     return true;

@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
@@ -29,7 +30,7 @@
 #include "wallet/api/wallet2_api.h"
 #include "wallet/wallet2.h"
 
-namespace Monero {
+namespace Wazn {
 
 class WalletImpl;
 
@@ -38,7 +39,7 @@ class SubaddressAccountImpl : public SubaddressAccount
 public:
     SubaddressAccountImpl(WalletImpl * wallet);
     ~SubaddressAccountImpl();
-    
+
     // Fetches addresses from Wallet2
     void refresh();
     std::vector<SubaddressAccountRow*> getAll() const;
@@ -47,7 +48,7 @@ public:
 
 private:
     void clearRows();
-    
+
 private:
     WalletImpl *m_wallet;
     std::vector<SubaddressAccountRow*> m_rows;

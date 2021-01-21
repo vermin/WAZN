@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
@@ -34,10 +35,10 @@
 
 #include <vector>
 
-namespace Monero {
-  
+namespace Wazn {
+
 Subaddress::~Subaddress() {}
-  
+
 SubaddressImpl::SubaddressImpl(WalletImpl *wallet)
     : m_wallet(wallet) {}
 
@@ -60,10 +61,10 @@ void SubaddressImpl::setLabel(uint32_t accountIndex, uint32_t addressIndex, cons
   }
 }
 
-void SubaddressImpl::refresh(uint32_t accountIndex) 
+void SubaddressImpl::refresh(uint32_t accountIndex)
 {
   LOG_PRINT_L2("Refreshing subaddress");
-  
+
   clearRows();
   for (size_t i = 0; i < m_wallet->m_wallet->get_num_subaddresses(accountIndex); ++i)
   {

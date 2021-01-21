@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -69,4 +70,3 @@ namespace net
 
     expect<boost::asio::ip::tcp::endpoint> get_tcp_endpoint(const boost::string_ref address);
 }
-

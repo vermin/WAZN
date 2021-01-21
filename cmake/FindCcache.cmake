@@ -1,3 +1,4 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -25,13 +26,13 @@
 # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# - Try to find readline include dirs and libraries 
+# - Try to find readline include dirs and libraries
 #
 # Automatically finds ccache build accelerator, if it's found in PATH.
 #
 # Usage of this module as follows:
 #
-#     project(monero)
+#     project(wazn)
 #     include(FindCcache) # Include AFTER the project() macro to be able to reach the CMAKE_CXX_COMPILER variable
 #
 # Properties modified by this module:

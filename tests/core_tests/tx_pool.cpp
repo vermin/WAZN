@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -486,7 +487,7 @@ bool txpool_double_spend_base::check_new_no_relay(cryptonote::core& c, size_t ev
   return check_changed(c, ev_index, relay_test::no_relay);
 }
 
-bool txpool_double_spend_base::check_tx_verification_context(const cryptonote::tx_verification_context& tvc, bool tx_added, size_t event_idx, const cryptonote::transaction& tx) 
+bool txpool_double_spend_base::check_tx_verification_context(const cryptonote::tx_verification_context& tvc, bool tx_added, size_t event_idx, const cryptonote::transaction& tx)
 {
   m_last_tx = cryptonote::get_transaction_hash(tx);
   if (m_no_new_index == event_idx)

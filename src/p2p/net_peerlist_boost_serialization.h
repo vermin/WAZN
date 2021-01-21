@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -25,7 +26,7 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #pragma once
@@ -136,7 +137,7 @@ namespace boost
     {
       const size_t length = std::strlen(na.host_str());
       if (length > 255)
-        MONERO_THROW(net::error::invalid_tor_address, "Tor address too long");
+        WAZN_THROW(net::error::invalid_tor_address, "Tor address too long");
 
       const uint16_t port{na.port()};
       const uint8_t len = length;
@@ -150,7 +151,7 @@ namespace boost
     {
       const size_t length = std::strlen(na.host_str());
       if (length > 255)
-        MONERO_THROW(net::error::invalid_i2p_address, "i2p address too long");
+        WAZN_THROW(net::error::invalid_i2p_address, "i2p address too long");
 
       const uint16_t port{na.port()};
       const uint8_t len = length;
@@ -169,7 +170,7 @@ namespace boost
 
       const size_t buffer_size = net::tor_address::buffer_size();
       if (length > buffer_size)
-        MONERO_THROW(net::error::invalid_tor_address, "Tor address too long");
+        WAZN_THROW(net::error::invalid_tor_address, "Tor address too long");
 
       char host[buffer_size] = {0};
       a.load_binary(host, length);
@@ -178,7 +179,7 @@ namespace boost
       if (std::strcmp(host, net::tor_address::unknown_str()) == 0)
         na = net::tor_address::unknown();
       else
-        na = MONERO_UNWRAP(net::tor_address::make(host, port));
+        na = WAZN_UNWRAP(net::tor_address::make(host, port));
     }
 
     template <class Archive, class ver_type>
@@ -191,7 +192,7 @@ namespace boost
 
       const size_t buffer_size = net::i2p_address::buffer_size();
       if (length > buffer_size)
-        MONERO_THROW(net::error::invalid_i2p_address, "i2p address too long");
+        WAZN_THROW(net::error::invalid_i2p_address, "i2p address too long");
 
       char host[buffer_size] = {0};
       a.load_binary(host, length);
@@ -200,7 +201,7 @@ namespace boost
       if (std::strcmp(host, net::i2p_address::unknown_str()) == 0)
         na = net::i2p_address::unknown();
       else
-        na = MONERO_UNWRAP(net::i2p_address::make(host, port));
+        na = WAZN_UNWRAP(net::i2p_address::make(host, port));
     }
 
     template <class Archive, class ver_type>

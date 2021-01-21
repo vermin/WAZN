@@ -44,7 +44,7 @@ for n in range(1, len(sys.argv)):
   rpc = framework.rpc.JSONRPC('{protocol}://{host}:{port}'.format(protocol=scheme, host=host, port=port))
   get_version = {
       'method': 'get_version',
-      'jsonrpc': '2.0', 
+      'jsonrpc': '2.0',
       'id': '0'
   }
   try:
@@ -53,7 +53,7 @@ for n in range(1, len(sys.argv)):
     raise Exception('Failed to call version RPC: ' + str(e))
 
   if 'version' not in res:
-    raise Exception('Server is not a Monero process')
+    raise Exception('Server is not a WAZN process')
 
   if 'status' in res:
     daemons.append(framework.daemon.Daemon(port=port))

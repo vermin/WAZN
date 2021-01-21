@@ -1,3 +1,4 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2017-2020, The Monero Project
 #
 # All rights reserved.
@@ -29,7 +30,7 @@
 set(gen_ssl_cert_sources
   gen_ssl_cert.cpp)
 
-monero_add_executable(gen_ssl_cert
+wazn_add_executable(gen_ssl_cert
   ${gen_ssl_cert_sources})
 target_link_libraries(gen_ssl_cert
   PRIVATE
@@ -45,5 +46,5 @@ add_dependencies(gen_ssl_cert
   version)
 set_property(TARGET gen_ssl_cert
   PROPERTY
-    OUTPUT_NAME "monero-gen-ssl-cert")
+    OUTPUT_NAME "wazn-gen-ssl-cert")
 install(TARGETS gen_ssl_cert DESTINATION bin)

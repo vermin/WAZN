@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -37,17 +38,17 @@
 
 #include <vector>
 
-namespace Monero {
-  
+namespace Wazn {
+
 AddressBook::~AddressBook() {}
-  
+
 AddressBookImpl::AddressBookImpl(WalletImpl *wallet)
     : m_wallet(wallet), m_errorCode(Status_Ok) {}
 
 bool AddressBookImpl::addRow(const std::string &dst_addr , const std::string &payment_id_str, const std::string &description)
 {
   clearStatus();
-  
+
   cryptonote::address_parse_info info;
   if(!cryptonote::get_account_address_from_str(info, m_wallet->m_wallet->nettype(), dst_addr)) {
     m_errorString = tr("Invalid destination address");
@@ -70,17 +71,17 @@ bool AddressBookImpl::addRow(const std::string &dst_addr , const std::string &pa
   return r;
 }
 
-void AddressBookImpl::refresh() 
+void AddressBookImpl::refresh()
 {
   LOG_PRINT_L2("Refreshing addressbook");
-  
+
   clearRows();
-  
+
   // Fetch from Wallet2 and create vector of AddressBookRow objects
   std::vector<tools::wallet2::address_book_row> rows = m_wallet->m_wallet->get_address_book();
   for (size_t i = 0; i < rows.size(); ++i) {
     tools::wallet2::address_book_row * row = &rows.at(i);
-    
+
     std::string address;
     if (row->m_has_payment_id)
       address = cryptonote::get_account_integrated_address_as_str(m_wallet->m_wallet->nettype(), row->m_address, row->m_payment_id);
@@ -89,7 +90,7 @@ void AddressBookImpl::refresh()
     AddressBookRow * abr = new AddressBookRow(i, address, "", row->m_description);
     m_rows.push_back(abr);
   }
-  
+
 }
 
 bool AddressBookImpl::deleteRow(std::size_t rowId)
@@ -99,7 +100,7 @@ bool AddressBookImpl::deleteRow(std::size_t rowId)
   if (r)
     refresh();
   return r;
-} 
+}
 
 int AddressBookImpl::lookupPaymentID(const std::string &payment_id) const
 {
@@ -148,4 +149,4 @@ AddressBookImpl::~AddressBookImpl()
 
 } // namespace
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

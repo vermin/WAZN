@@ -21,6 +21,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
+// Code surrounding the word list is Copyright (c) 2019-2021 WAZN Project
 // Code surrounding the word list is Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -51,7 +52,7 @@
 
 /*!
  * \file spanish.h
- * 
+ *
  * \brief Spanish word list and map.
  */
 

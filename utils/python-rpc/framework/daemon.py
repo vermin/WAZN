@@ -1,21 +1,22 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2018 The Monero Project
-# 
+#
 # All rights reserved.
-# 
+#
 # Redistribution and use in source and binary forms, with or without modification, are
 # permitted provided that the following conditions are met:
-# 
+#
 # 1. Redistributions of source code must retain the above copyright notice, this list of
 #    conditions and the following disclaimer.
-# 
+#
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
 #    of conditions and the following disclaimer in the documentation and/or other
 #    materials provided with the distribution.
-# 
+#
 # 3. Neither the name of the copyright holder nor the names of its contributors may be
 #    used to endorse or promote products derived from this software without specific
 #    prior written permission.
-# 
+#
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 # EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 # MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -28,12 +29,12 @@
 
 """Daemon class to make rpc calls and store state."""
 
-from .rpc import JSONRPC 
+from .rpc import JSONRPC
 
 class Daemon(object):
 
     def __init__(self, protocol='http', host='127.0.0.1', port=0, idx=0, restricted_rpc = False):
-        base = 18480 if restricted_rpc else 18180
+        base = 11480 if restricted_rpc else 11786
         self.host = host
         self.port = port
         self.rpc = JSONRPC('{protocol}://{host}:{port}'.format(protocol=protocol, host=host, port=port if port else base+idx))
@@ -47,7 +48,7 @@ class Daemon(object):
                 'reserve_size' : 1,
                 'prev_block' : prev_block,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getblocktemplate)
@@ -66,10 +67,10 @@ class Daemon(object):
     def submitblock(self, block):
         submitblock = {
             'method': 'submitblock',
-            'params': [ block ],    
-            'jsonrpc': '2.0', 
+            'params': [ block ],
+            'jsonrpc': '2.0',
             'id': '0'
-        }    
+        }
         return self.rpc.send_json_rpc_request(submitblock)
     submit_block = submitblock
 
@@ -82,7 +83,7 @@ class Daemon(object):
                 'height': height,
                 'fill_pow_hash': fill_pow_hash,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getblock)
@@ -94,7 +95,7 @@ class Daemon(object):
             'params': {
                 'client': client,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getlastblockheader)
@@ -108,7 +109,7 @@ class Daemon(object):
                 'hash': hash,
                 'hashes': hashes,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getblockheaderbyhash)
@@ -121,7 +122,7 @@ class Daemon(object):
                 'client': client,
                 'height': height,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getblockheaderbyheight)
@@ -136,7 +137,7 @@ class Daemon(object):
                 'end_height': end_height,
                 'fill_pow_hash': fill_pow_hash,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(getblockheadersrange)
@@ -146,7 +147,7 @@ class Daemon(object):
         get_connections = {
             'client': client,
             'method': 'get_connections',
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_connections)
@@ -159,7 +160,7 @@ class Daemon(object):
             },
             'jsonrpc': '2.0',
             'id': '0'
-        }    
+        }
         return self.rpc.send_json_rpc_request(get_info)
     getinfo = get_info
 
@@ -171,7 +172,7 @@ class Daemon(object):
             },
             'jsonrpc': '2.0',
             'id': '0'
-        }    
+        }
         return self.rpc.send_json_rpc_request(hard_fork_info)
 
     def generateblocks(self, address, blocks=1, prev_block = "", starting_nonce = 0):
@@ -184,7 +185,7 @@ class Daemon(object):
                 'prev_block': prev_block,
                 'starting_nonce': starting_nonce,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(generateblocks)
@@ -481,7 +482,7 @@ class Daemon(object):
             'method': 'get_block_count',
             'params': {
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_block_count)
@@ -491,7 +492,7 @@ class Daemon(object):
         get_block_hash = {
             'method': 'get_block_hash',
             'params': [height],
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_block_hash)
@@ -505,7 +506,7 @@ class Daemon(object):
                 'txids': txids,
                 'client': client,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(relay_tx)
@@ -516,7 +517,7 @@ class Daemon(object):
             'params': {
                 'client': client,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(sync_info)
@@ -527,7 +528,7 @@ class Daemon(object):
             'params': {
                 'client': client,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(get_txpool_backlog)
@@ -538,7 +539,7 @@ class Daemon(object):
             'params': {
                 'check': check,
             },
-            'jsonrpc': '2.0', 
+            'jsonrpc': '2.0',
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(prune_blockchain)

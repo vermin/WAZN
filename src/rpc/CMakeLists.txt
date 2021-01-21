@@ -1,3 +1,4 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -84,36 +85,36 @@ set(daemon_rpc_server_private_headers
   zmq_server.h)
 
 
-monero_private_headers(rpc
+wazn_private_headers(rpc
   ${rpc_private_headers})
 
 set(rpc_pub_private_headers)
 
-monero_private_headers(daemon_rpc_server
+wazn_private_headers(daemon_rpc_server
   ${daemon_rpc_server_private_headers})
 
 
-monero_add_library(rpc_base
+wazn_add_library(rpc_base
   ${rpc_base_sources}
   ${rpc_base_headers}
   ${rpc_base_private_headers})
 
-monero_add_library(rpc
+wazn_add_library(rpc
   ${rpc_sources}
   ${rpc_headers}
   ${rpc_private_headers})
 
-monero_add_library(rpc_pub
+wazn_add_library(rpc_pub
   ${rpc_pub_sources}
   ${rpc_pub_headers}
   ${rpc_pub_private_headers})
 
-monero_add_library(daemon_messages
+wazn_add_library(daemon_messages
   ${daemon_messages_sources}
   ${daemon_messages_headers}
   ${daemon_messages_private_headers})
 
-monero_add_library(daemon_rpc_server
+wazn_add_library(daemon_rpc_server
   ${daemon_rpc_server_sources}
   ${daemon_rpc_server_headers}
   ${daemon_rpc_server_private_headers})

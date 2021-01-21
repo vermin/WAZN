@@ -18,9 +18,9 @@ For example:
 make HOST=x86_64-w64-mingw32 -j4
 ```
 
-A toolchain will be generated that's suitable for plugging into Monero's
+A toolchain will be generated that's suitable for plugging into WAZN's
 cmake. In the above example, a dir named x86_64-w64-mingw32 will be
-created. To use it for Monero:
+created. To use it for WAZN:
 
 ```bash
 cmake -DCMAKE_TOOLCHAIN=`pwd`/contrib/depends/x86_64-w64-mingw32
@@ -61,10 +61,10 @@ download-linux: run 'make download-linux' to fetch all sources needed for linux 
 
 #Darwin (macos) builds:
 
-To build with the x86_64-apple-darwin11 you require the mac os developer tools in MacOSX10.11.sdk. 
+To build with the x86_64-apple-darwin11 you require the mac os developer tools in MacOSX10.11.sdk.
 Download it from apple, or search for it on github. Create a new directoty called SDKs in this
 directory and place the entire MacOSX10.11.sdk folder in it. The depends build will then pick it up automatically
-(without requiring SDK_PATH). 
+(without requiring SDK_PATH).
 
 
 #Mingw builds
@@ -80,4 +80,3 @@ update-alternatives --set x86_64-w64-mingw32-gcc x86_64-w64-mingw32-gcc-posix
 
 - [description.md](description.md): General description of the depends system
 - [packages.md](packages.md): Steps for adding packages
-

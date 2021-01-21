@@ -21,10 +21,9 @@ then
   languages=""
   for language in $(cat translations/ready)
   do
-    languages="$languages translations/monero_$language.ts"
+    languages="$languages translations/wazn_$language.ts"
   done
 else
   languages="translations/*.ts"
 fi
 "$lrelease" $languages
-

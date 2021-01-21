@@ -1,9 +1,9 @@
 Gitian building
 ================
 
-*Setup instructions for a Gitian build of Monero.*
+*Setup instructions for a Gitian build of WAZN.*
 
-Gitian is the deterministic build process that is used to build the Monero CLI
+Gitian is the deterministic build process that is used to build the WAZN CLI
 executables. It provides a way to be reasonably sure that the
 executables are really built from the git source. It also makes sure that
 the same, tested dependencies are used and statically built into the executable.
@@ -102,7 +102,7 @@ sudo usermod -aG docker gitianuser
 Manual Building
 -------------------
 
-The instructions below use the automated script [gitian-build.py](gitian-build.py) which only works in Ubuntu. 
+The instructions below use the automated script [gitian-build.py](gitian-build.py) which only works in Ubuntu.
 =======
 The script automatically installs some packages with apt. If you are not running it on a debian-like system, pass `--no-apt` along with the other
 arguments to it. It calls all available .yml descriptors, which in turn pass the build configurations for different platforms to gitian.
@@ -117,7 +117,7 @@ Initial Gitian Setup
 The `gitian-build.py` script will checkout different release tags, so it's best to copy it to the top level directory:
 
 ```bash
-cp monero/contrib/gitian/gitian-build.py .
+cp wazn/contrib/gitian/gitian-build.py .
 ```
 
 ### Setup the required environment
@@ -131,7 +131,7 @@ VERSION=v0.17.1.9
 ./gitian-build.py --setup $GH_USER $VERSION
 ```
 
-Where `GH_USER` is your Github user name and `VERSION` is the version tag you want to build. 
+Where `GH_USER` is your Github user name and `VERSION` is the version tag you want to build.
 
 Setup for docker:
 
@@ -140,12 +140,12 @@ Setup for docker:
 ```
 
 While gitian and this build script does provide a way for you to sign the build directly, it is recommended to sign in a separate step. This script is only there for convenience. Separate steps for building can still be taken.
-In order to sign gitian builds on your host machine, which has your PGP key, 
-fork the [gitian.sigs repository](https://github.com/monero-project/gitian.sigs) and clone it on your host machine, 
+In order to sign gitian builds on your host machine, which has your PGP key,
+fork the [gitian.sigs repository](https://github.com/wazn-project/gitian.sigs) and clone it on your host machine,
 or pass the signed assert file back to your build machine.
 
 ```bash
-git clone git@github.com:monero-project/gitian.sigs.git
+git clone git@github.com:wazn-project/gitian.sigs.git
 git remote add $GH_USER git@github.com:$GH_USER/gitian.sigs.git
 ```
 
@@ -172,7 +172,7 @@ Take a look in the assert files and note the SHA256 checksums listed there.
 You should verify that the checksum that is listed matches each of the binaries you actually built.
 This may be done on Linux using the `sha256sum` command or on MacOS using `shasum --algorithm 256` for example.
 
-You can also look in the [gitian.sigs](https://github.com/monero-project/gitian.sigs/) repo and / or [getmonero.org release checksums](https://web.getmonero.org/downloads/hashes.txt) to see if others got the same checksum for the same version tag.  If there is ever a mismatch -- **STOP! Something is wrong**.  Contact others on IRC / github to figure out what is going on.
+You can also look in the [gitian.sigs](https://github.com/wazn-project/gitian.sigs/) repo and / or [wazn.io release checksums](https://wazn.io/downloads/hashes.txt) to see if others got the same checksum for the same version tag.  If there is ever a mismatch -- **STOP! Something is wrong**.  Contact others on IRC / github to figure out what is going on.
 
 
 Signing assert files
@@ -184,10 +184,10 @@ If you chose to do detached signing using `--detach-sign` above (recommended), y
 GH_USER=fluffypony
 VERSION=v0.17.1.9
 
-gpg --detach-sign ${VERSION}-linux/${GH_USER}/monero-linux-*-build.assert
-gpg --detach-sign ${VERSION}-win/${GH_USER}/monero-win-*-build.assert
-gpg --detach-sign ${VERSION}-osx/${GH_USER}/monero-osx-*-build.assert
-gpg --detach-sign ${VERSION}-android/${GH_USER}/monero-android-*-build.assert
+gpg --detach-sign ${VERSION}-linux/${GH_USER}/wazn-linux-*-build.assert
+gpg --detach-sign ${VERSION}-win/${GH_USER}/wazn-win-*-build.assert
+gpg --detach-sign ${VERSION}-osx/${GH_USER}/wazn-osx-*-build.assert
+gpg --detach-sign ${VERSION}-android/${GH_USER}/wazn-android-*-build.assert
 ```
 
 This will create a `.sig` file for each `.assert` file above (2 files for each platform).
@@ -197,7 +197,7 @@ Submitting your signed assert files
 -----------------------------------
 
 Make a pull request (both the `.assert` and `.assert.sig` files) to the
-[monero-project/gitian.sigs](https://github.com/monero-project/gitian.sigs/) repository:
+[wazn-project/gitian.sigs](https://github.com/wazn-project/gitian.sigs/) repository:
 
 ```bash
 git checkout -b $VERSION
@@ -206,7 +206,7 @@ git commit -S -a -m "Add $GH_USER $VERSION"
 git push --set-upstream $GH_USER $VERSION
 ```
 
-**Note:** Please ensure your gpg public key is available to check signatures by adding it to the [gitian.sigs/gitian-pubkeys/](https://github.com/monero-project/gitian.sigs/tree/master/gitian-pubkeys) directory in a pull request.
+**Note:** Please ensure your gpg public key is available to check signatures by adding it to the [gitian.sigs/gitian-pubkeys/](https://github.com/wazn-project/gitian.sigs/tree/master/gitian-pubkeys) directory in a pull request.
 
 
 More Build Options
@@ -240,4 +240,3 @@ Local-Only Builds
 If you need to run builds while disconnected from the internet, make sure you have
 local up-to-date repos in advance. Then specify your local repo using the `--url`
 option when building. This will avoid attempts to git pull across a network.
-

@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2017-2018, The Monero Project
 //
 // All rights reserved.
@@ -27,8 +28,8 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef MONERO_DEBUG_LINK_H
-#define MONERO_DEBUG_LINK_H
+#ifndef WAZN_DEBUG_LINK_H
+#define WAZN_DEBUG_LINK_H
 
 #include "transport.hpp"
 #include "messages/messages-debug.pb.h"
@@ -90,4 +91,4 @@ namespace trezor {
 }
 }
 
-#endif //MONERO_DEBUG_LINK_H
+#endif //WAZN_DEBUG_LINK_H

@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
@@ -61,7 +62,7 @@ namespace
     std::memcpy(addressof(value), source, sizeof(T));
 
     std::stringstream out;
-    out << "BEGIN" << value << "END";  
+    out << "BEGIN" << value << "END";
     return out.str() == "BEGIN<" + std::string{expected, sizeof(T) * 2} + ">END";
   }
 }

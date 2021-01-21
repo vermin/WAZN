@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
@@ -27,8 +28,8 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef MONERO_TREZOR_HPP
-#define MONERO_TREZOR_HPP
+#ifndef WAZN_TREZOR_HPP
+#define WAZN_TREZOR_HPP
 
 #include "trezor/trezor_defs.hpp"
 
@@ -37,8 +38,8 @@
 #include "trezor/messages/messages.pb.h"
 #include "trezor/messages/messages-common.pb.h"
 #include "trezor/messages/messages-management.pb.h"
-#include "trezor/messages/messages-monero.pb.h"
+#include "trezor/messages/messages-wazn.pb.h"
 #include "trezor/protocol.hpp"
 #endif
 
-#endif //MONERO_TREZOR_HPP
+#endif //WAZN_TREZOR_HPP

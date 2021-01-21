@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -323,7 +324,7 @@ TEST(Expect, Trivial)
 }
 
 TEST(Expect, Assignment)
-{ 
+{
     expect<std::string> val1{std::string{}};
     expect<std::string> val2{"foobar"};
 
@@ -818,98 +819,97 @@ TEST(Expect, EqualNoCopies)
 TEST(Expect, Macros) {
     EXPECT_TRUE(
         [] () -> ::common_error {
-            MONERO_PRECOND(true);
+            WAZN_PRECOND(true);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> ::common_error {
-            MONERO_PRECOND(false);
+            WAZN_PRECOND(false);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
     EXPECT_TRUE(
         [] () -> std::error_code {
-            MONERO_PRECOND(true);
+            WAZN_PRECOND(true);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> std::error_code {
-            MONERO_PRECOND(false);
+            WAZN_PRECOND(false);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
     EXPECT_TRUE(
         [] () -> expect<void> {
-            MONERO_PRECOND(true);
+            WAZN_PRECOND(true);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> expect<void> {
-            MONERO_PRECOND(false);
+            WAZN_PRECOND(false);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
     EXPECT_TRUE(
         [] () -> expect<int> {
-            MONERO_PRECOND(true);
+            WAZN_PRECOND(true);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> expect<int> {
-            MONERO_PRECOND(false);
+            WAZN_PRECOND(false);
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
 
     EXPECT_TRUE(
         [] () -> std::error_code {
-            MONERO_CHECK(expect<void>{});
+            WAZN_CHECK(expect<void>{});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> std::error_code {
-            MONERO_CHECK(expect<void>{common_error::kInvalidArgument});
+            WAZN_CHECK(expect<void>{common_error::kInvalidArgument});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
     EXPECT_TRUE(
         [] () -> expect<void> {
-            MONERO_CHECK(expect<void>{});
+            WAZN_CHECK(expect<void>{});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> expect<void> {
-            MONERO_CHECK(expect<void>{common_error::kInvalidArgument});
+            WAZN_CHECK(expect<void>{common_error::kInvalidArgument});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
     EXPECT_TRUE(
         [] () -> expect<int> {
-            MONERO_CHECK(expect<void>{});
+            WAZN_CHECK(expect<void>{});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidErrorCode
     );
     EXPECT_TRUE(
         [] () -> expect<int> {
-            MONERO_CHECK(expect<void>{common_error::kInvalidArgument});
+            WAZN_CHECK(expect<void>{common_error::kInvalidArgument});
             return {common_error::kInvalidErrorCode};
         } () == common_error::kInvalidArgument
     );
 
-    EXPECT_NO_THROW(MONERO_UNWRAP(success()));
-    EXPECT_NO_THROW(MONERO_UNWRAP(expect<void>{}));
-    EXPECT_NO_THROW(MONERO_UNWRAP(expect<int>{0}));
+    EXPECT_NO_THROW(WAZN_UNWRAP(success()));
+    EXPECT_NO_THROW(WAZN_UNWRAP(expect<void>{}));
+    EXPECT_NO_THROW(WAZN_UNWRAP(expect<int>{0}));
     EXPECT_THROW(
-        MONERO_UNWRAP(expect<void>{common_error::kInvalidArgument}), std::system_error
+        WAZN_UNWRAP(expect<void>{common_error::kInvalidArgument}), std::system_error
     );
     EXPECT_THROW(
-        MONERO_UNWRAP(expect<int>{common_error::kInvalidArgument}), std::system_error
+        WAZN_UNWRAP(expect<int>{common_error::kInvalidArgument}), std::system_error
     );
 }
-

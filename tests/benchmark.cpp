@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2020, The Monero Project
 //
 // All rights reserved.
@@ -59,8 +60,8 @@
 
 #include "crypto/crypto.h"
 #include "cryptonote_basic/cryptonote_basic.h"
-#include "monero/crypto/amd64-64-24k.h"
-#include "monero/crypto/amd64-51-30k.h"
+#include "wazn/crypto/amd64-64-24k.h"
+#include "wazn/crypto/amd64-51-30k.h"
 
 #define CHECK(...)                           \
     if(!( __VA_ARGS__ ))                      \
@@ -80,7 +81,7 @@
     }
 
 #define CRYPTO_FUNCTION(library, func)                        \
-    BOOST_PP_CAT(BOOST_PP_CAT(monero_crypto_, library), func)
+    BOOST_PP_CAT(BOOST_PP_CAT(wazn_crypto_, library), func)
 
 #define CRYPTO_BENCHMARK(r, _, library)                                                                                                                                  \
     struct library                                                                                                                                                       \
@@ -112,7 +113,7 @@ namespace
         return std::memcmp(std::addressof(lhs), std::addressof(rhs), sizeof(T)) == 0;
     }
 
-    //! Benchmark default monero crypto library - a re-arranged ref10 implementation.
+    //! Benchmark default WAZN crypto library - a re-arranged ref10 implementation.
     struct cn
     {
         static constexpr const char* name() noexcept { return "cn"; }
@@ -174,7 +175,7 @@ namespace
         cryptonote::keypair two;
     };
 
-    /*! Tests the ECDH step used for monero txes where the tx-pub is always
+    /*! Tests the ECDH step used for WAZN txes where the tx-pub is always
         de-compressed into a table every time. */
     struct tx_pub_standard
     {
@@ -224,7 +225,7 @@ namespace
         }
     };
 
-    /*! Tests the shared-secret to output-key step used for monero txes where
+    /*! Tests the shared-secret to output-key step used for WAZN txes where
         the users spend-public is always de-compressed. */
     struct output_pub_standard
     {
@@ -434,4 +435,3 @@ int main(int argc, char** argv)
     }
     return 0;
 }
-

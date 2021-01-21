@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -78,9 +79,9 @@ namespace
   {
     net::zmq::socket sock{zmq_socket(ctx, ZMQ_PAIR)};
     if (!sock)
-      MONERO_ZMQ_THROW("failed to create socket");
+      WAZN_ZMQ_THROW("failed to create socket");
     if (zmq_bind(sock.get(), address) != 0)
-      MONERO_ZMQ_THROW("socket bind failure");
+      WAZN_ZMQ_THROW("socket bind failure");
     return sock;
   }
 
@@ -280,9 +281,9 @@ namespace
         pub(std::make_shared<cryptonote::listener::zmq_pub>(ctx.get()))
     {
       if (!dummy_client)
-        MONERO_ZMQ_THROW("failed to create socket");
+        WAZN_ZMQ_THROW("failed to create socket");
       if (zmq_connect(dummy_client.get(), inproc_pub) != 0)
-        MONERO_ZMQ_THROW("failed to connect to dummy pub");
+        WAZN_ZMQ_THROW("failed to connect to dummy pub");
     }
 
     virtual void TearDown() override final
@@ -335,9 +336,9 @@ namespace
 
       sub.reset(zmq_socket(ctx, ZMQ_SUB));
       if (!sub)
-        MONERO_ZMQ_THROW("failed to create socket");
+        WAZN_ZMQ_THROW("failed to create socket");
       if (zmq_connect(sub.get(), inproc_pub) != 0)
-        MONERO_ZMQ_THROW("failed to connect to dummy pub");
+        WAZN_ZMQ_THROW("failed to connect to dummy pub");
 
       server.run();
     }
@@ -354,7 +355,7 @@ namespace
     void subscribe(const char (&topic)[N])
     {
       if (zmq_setsockopt(sub.get(), ZMQ_SUBSCRIBE, topic, N - 1) != 0)
-        MONERO_ZMQ_THROW("failed to subscribe");
+        WAZN_ZMQ_THROW("failed to subscribe");
     }
   };
 }

@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -25,7 +26,7 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// 
+//
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 #include "gtest/gtest.h"
@@ -57,7 +58,7 @@ TEST(ringct, Borromean)
         bits indi;
 
         for (j = 0 ; j < N ; j++) {
-            indi[j] = (int)randXmrAmount(2);
+            indi[j] = (int)randWaznAmount(2);
 
             xv[j] = skGen();
             if ( (int)indi[j] == 0 ) {
@@ -176,7 +177,7 @@ TEST(ringct, CLSAG)
   ctkey insk;
   insk.dest = p;
   insk.mask = t;
-  
+
   // bad message
   clsag = rct::proveRctCLSAGSimple(zero(),pubs,insk,t2,Cout,NULL,NULL,NULL,idx,hw::get_device("default"));
   ASSERT_FALSE(rct::verRctCLSAGSimple(message,clsag,pubs,Cout));
@@ -317,7 +318,7 @@ TEST(ringct, range_proofs)
         tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
-        vector<xmr_amount >amounts;
+        vector<wazn_amount >amounts;
         rct::keyV amount_keys;
         key mask;
 
@@ -389,7 +390,7 @@ TEST(ringct, range_proofs_with_fee)
         tie(sctmp, pctmp) = ctskpkGen(inamounts.back());
         sc.push_back(sctmp);
         pc.push_back(pctmp);
-        vector<xmr_amount >amounts;
+        vector<wazn_amount >amounts;
         keyV amount_keys;
         key mask;
 
@@ -441,9 +442,9 @@ TEST(ringct, simple)
         ctkeyV sc, pc;
         ctkey sctmp, pctmp;
         //this vector corresponds to output amounts
-        vector<xmr_amount>outamounts;
+        vector<wazn_amount>outamounts;
        //this vector corresponds to input amounts
-        vector<xmr_amount>inamounts;
+        vector<wazn_amount>inamounts;
         //this keyV corresponds to destination pubkeys
         keyV destinations;
         keyV amount_keys;
@@ -483,7 +484,7 @@ TEST(ringct, simple)
         key message = skGen(); //real message later (hash of txn..)
 
         //compute sig with mixin 2
-        xmr_amount txnfee = 1;
+        wazn_amount txnfee = 1;
 
         const rct::RCTConfig rct_config { RangeProofBorromean, 0 };
         rctSig s = genRctSimple(message, sc, pc, destinations,inamounts, outamounts, amount_keys, NULL, NULL, txnfee, 2, rct_config, hw::get_device("default"));
@@ -499,7 +500,7 @@ static rct::rctSig make_sample_rct_sig(int n_inputs, const uint64_t input_amount
 {
     ctkeyV sc, pc;
     ctkey sctmp, pctmp;
-    vector<xmr_amount >amounts;
+    vector<wazn_amount >amounts;
     keyV destinations;
     keyV amount_keys;
     key Sk, Pk;
@@ -528,7 +529,7 @@ static rct::rctSig make_sample_simple_rct_sig(int n_inputs, const uint64_t input
 {
     ctkeyV sc, pc;
     ctkey sctmp, pctmp;
-    vector<xmr_amount> inamounts, outamounts;
+    vector<wazn_amount> inamounts, outamounts;
     keyV destinations;
     keyV amount_keys;
     key Sk, Pk;
@@ -970,7 +971,7 @@ TEST(ringct, HPow2)
   }
 }
 
-static const xmr_amount test_amounts[]={0, 1, 2, 3, 4, 5, 10000, 10000000000000000000ull, 10203040506070809000ull, 123456789123456789};
+static const wazn_amount test_amounts[]={0, 1, 2, 3, 4, 5, 10000, 10000000000000000000ull, 10203040506070809000ull, 123456789123456789};
 
 TEST(ringct, d2h)
 {

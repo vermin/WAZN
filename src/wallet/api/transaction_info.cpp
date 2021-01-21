@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -33,7 +34,7 @@
 
 using namespace std;
 
-namespace Monero {
+namespace Wazn {
 
 TransactionInfo::~TransactionInfo() {}
 
@@ -140,4 +141,4 @@ uint64_t TransactionInfoImpl::unlockTime() const
 
 } // namespace
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

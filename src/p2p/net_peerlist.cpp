@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -48,7 +49,7 @@ namespace nodetool
   namespace
   {
     constexpr unsigned CURRENT_PEERLIST_STORAGE_ARCHIVE_VER = 6;
- 
+
     struct by_zone
     {
       using zone = epee::net_utils::zone;
@@ -81,7 +82,7 @@ namespace nodetool
 
       uint64_t size = 0;
       a & size;
-      
+
       Elem ple{};
 
       std::vector<Elem> elems{};
@@ -103,7 +104,7 @@ namespace nodetool
       for (const auto& elem : elems)
         a & elem;
     }
- 
+
     template<typename T>
     std::vector<T> do_take_zone(std::vector<T>& src, epee::net_utils::zone zone)
     {
@@ -149,7 +150,7 @@ namespace nodetool
       a & peer_id;
     }
   }
- 
+
   template<typename Archive>
   void serialize(Archive& a, peerlist_join elem, unsigned ver)
   {
@@ -278,7 +279,7 @@ namespace nodetool
   }
 
   void peerlist_manager::get_peerlist(peerlist_types& peers)
-  { 
+  {
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
     peers.white.reserve(peers.white.size() + m_peers_white.size());
     peers.gray.reserve(peers.gray.size() + m_peers_gray.size());
@@ -305,4 +306,3 @@ namespace nodetool
 
 BOOST_CLASS_VERSION(nodetool::peerlist_types, nodetool::CURRENT_PEERLIST_STORAGE_ARCHIVE_VER);
 BOOST_CLASS_VERSION(nodetool::peerlist_join, nodetool::CURRENT_PEERLIST_STORAGE_ARCHIVE_VER);
-

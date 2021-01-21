@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -34,4 +35,3 @@ namespace cryptonote
   struct cryptonote_connection_context;
   struct i_core_events;
 }
-

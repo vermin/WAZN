@@ -1,5 +1,6 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
-// 
+//
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are
@@ -53,8 +54,8 @@ using namespace epee;
 
 #include <functional>
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "daemon"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "daemon"
 
 namespace daemonize {
 
@@ -213,7 +214,7 @@ bool t_daemon::run(bool interactive)
       MGINFO("Public RPC port " << public_rpc_port << " will be advertised to other peers over P2P");
       mp_internals->p2p.get().set_rpc_port(public_rpc_port);
     }
-    
+
     mp_internals->p2p.run(); // blocks until p2p goes down
 
     if (rpc_commands)

@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
@@ -27,8 +28,8 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 
-#ifndef MONERO_DEVICE_COLD_H
-#define MONERO_DEVICE_COLD_H
+#ifndef WAZN_DEVICE_COLD_H
+#define WAZN_DEVICE_COLD_H
 
 #include "wallet/wallet2.h"
 #include <boost/optional/optional.hpp>
@@ -165,4 +166,4 @@ namespace hw {
   };
 }
 
-#endif //MONERO_DEVICE_COLD_H
+#endif //WAZN_DEVICE_COLD_H

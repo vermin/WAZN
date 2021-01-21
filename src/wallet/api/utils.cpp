@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -35,11 +36,11 @@
 
 using namespace std;
 
-namespace Monero {
+namespace Wazn {
 namespace Utils {
 
 bool isAddressLocal(const std::string &address)
-{ 
+{
     try {
         return tools::is_local_address(address);
     } catch (const std::exception &e) {
@@ -61,4 +62,4 @@ void onStartup()
 
 } // namespace
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

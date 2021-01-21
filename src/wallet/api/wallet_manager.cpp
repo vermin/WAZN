@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -40,14 +41,14 @@
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "WalletAPI"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "WalletAPI"
 
 namespace epee {
     unsigned int g_test_dbg_lock_sleep = 0;
 }
 
-namespace Monero {
+namespace Wazn {
 
 Wallet *WalletManagerImpl::createWallet(const std::string &path, const std::string &password,
                                     const std::string &language, NetworkType nettype, uint64_t kdf_rounds)
@@ -67,7 +68,7 @@ Wallet *WalletManagerImpl::openWallet(const std::string &path, const std::string
 
     wallet->open(path, password);
     //Refresh addressBook
-    wallet->addressBook()->refresh(); 
+    wallet->addressBook()->refresh();
     return wallet;
 }
 
@@ -107,7 +108,7 @@ Wallet *WalletManagerImpl::recoveryWallet(const std::string &path,
 Wallet *WalletManagerImpl::createWalletFromKeys(const std::string &path,
                                                 const std::string &password,
                                                 const std::string &language,
-                                                NetworkType nettype, 
+                                                NetworkType nettype,
                                                 uint64_t restoreHeight,
                                                 const std::string &addressString,
                                                 const std::string &viewKeyString,
@@ -365,7 +366,7 @@ std::tuple<bool, std::string, std::string, std::string, std::string> WalletManag
     if (!tools::check_updates(software, buildtag, version, hash))
       return std::make_tuple(false, "", "", "", "");
 
-    if (tools::vercmp(version.c_str(), current_version != nullptr ? current_version : MONERO_VERSION) > 0)
+    if (tools::vercmp(version.c_str(), current_version != nullptr ? current_version : WAZN_VERSION) > 0)
     {
       std::string user_url = tools::get_update_url(software, subdir, buildtag, version, true);
       std::string auto_url = tools::get_update_url(software, subdir, buildtag, version, false);
@@ -407,4 +408,4 @@ void WalletManagerFactory::setLogCategories(const std::string &categories)
 
 }
 
-namespace Bitmonero = Monero;
+namespace Bitwazn = Wazn;

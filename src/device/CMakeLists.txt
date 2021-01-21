@@ -1,3 +1,4 @@
+# Copyright (c) 2019-2021 WAZN Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -33,8 +34,8 @@ set(device_sources
   )
 
 if(HIDAPI_FOUND)
-  set(device_sources 
-    ${device_sources} 
+  set(device_sources
+    ${device_sources}
     device_ledger.cpp
     device_io_hid.cpp
     )
@@ -49,8 +50,8 @@ set(device_headers
  )
 
 if(HIDAPI_FOUND)
-  set(device_headers 
-    ${device_headers} 
+  set(device_headers
+    ${device_headers}
     device_ledger.hpp
     device_io_hid.hpp
     )
@@ -59,10 +60,10 @@ endif()
 set(device_private_headers)
 
 
-monero_private_headers(device
+wazn_private_headers(device
   ${device_private_headers})
 
-monero_add_library(device
+wazn_add_library(device
   ${device_sources}
   ${device_headers}
   ${device_private_headers})

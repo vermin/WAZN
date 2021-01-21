@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -137,7 +138,7 @@ namespace cryptonote
   {
     const descriptors arg{};
     rpc_args config{};
-    
+
     config.bind_ip = command_line::get_arg(vm, arg.rpc_bind_ip);
     config.bind_ipv6_address = command_line::get_arg(vm, arg.rpc_bind_ipv6_address);
     config.restricted_bind_ip = command_line::get_arg(vm, arg.rpc_restricted_bind_ip);

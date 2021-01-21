@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -36,7 +37,7 @@
 #include "common/error.h"
 
 //! If precondition fails, return `::error::kInvalidArgument` in current scope.
-#define MONERO_PRECOND(...)                            \
+#define WAZN_PRECOND(...)                            \
     do                                                 \
     {                                                  \
         if (!( __VA_ARGS__ ))                          \
@@ -44,7 +45,7 @@
     } while (0)
 
 //! Check `expect<void>` and return errors in current scope.
-#define MONERO_CHECK(...)                           \
+#define WAZN_CHECK(...)                           \
     do                                              \
     {                                               \
         const ::expect<void> result = __VA_ARGS__ ; \
@@ -57,13 +58,13 @@
 
     \throw std::system_error with `expect<T>::error()`, filename and line
         number when `expect<T>::has_error() == true`.*/
-#define MONERO_UNWRAP(...)                                        \
+#define WAZN_UNWRAP(...)                                        \
     ::detail::expect::unwrap( __VA_ARGS__ , nullptr, __FILE__ , __LINE__ )
 
 /* \throw std::system_error with `code` and `msg` as part of the details. The
 filename and line number will automatically be injected into the explanation
 string. `code` can be any enum convertible to `std::error_code`. */
-#define MONERO_THROW(code, msg) \
+#define WAZN_THROW(code, msg) \
     ::detail::expect::throw_( code , msg , __FILE__ , __LINE__ )
 
 
@@ -74,7 +75,7 @@ namespace detail
     // Shortens the characters in the places that `enable_if` is used below.
     template<bool C>
     using enable_if = typename std::enable_if<C>::type;
- 
+
     struct expect
     {
         //! \throw std::system_error with `ec`, optional `msg` and/or optional `file` + `line`.
@@ -306,7 +307,7 @@ public:
     //! \return Value, \pre `has_value()`.
     T const& operator*() const noexcept { return get(); }
 
-    /*! 
+    /*!
         \note This function is `noexcept` when `U == T` is `noexcept`.
         \return True if `has_value() == rhs.has_value()` and if values or errors are equal.
     */
@@ -446,4 +447,3 @@ namespace detail
             throw_(result.error(), error_msg, file, line);
     }
 }
-

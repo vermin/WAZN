@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2016, Monero Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
@@ -35,8 +36,8 @@
 using namespace crypto;
 using namespace std;
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "ringct"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "ringct"
 
 #define CHECK_AND_ASSERT_THROW_MES_L1(expr, message) {if(!(expr)) {MWARNING(message); throw std::runtime_error(message);}}
 
@@ -294,12 +295,12 @@ namespace rct {
     }
 
     //generates C =aG + bH from b, a is given..
-    void genC(key & C, const key & a, xmr_amount amount) {
+    void genC(key & C, const key & a, wazn_amount amount) {
         addKeys2(C, a, d2h(amount), rct::H);
     }
 
     //generates a <secret , public> / Pedersen commitment to the amount
-    tuple<ctkey, ctkey> ctskpkGen(xmr_amount amount) {
+    tuple<ctkey, ctkey> ctskpkGen(wazn_amount amount) {
         ctkey sk, pk;
         skpkGen(sk.dest, pk.dest);
         skpkGen(sk.mask, pk.mask);
@@ -308,9 +309,9 @@ namespace rct {
         addKeys(pk.mask, pk.mask, bH);
         return make_tuple(sk, pk);
     }
-    
-    
-    //generates a <secret , public> / Pedersen commitment but takes bH as input 
+
+
+    //generates a <secret , public> / Pedersen commitment but takes bH as input
     tuple<ctkey, ctkey> ctskpkGen(const key &bH) {
         ctkey sk, pk;
         skpkGen(sk.dest, pk.dest);
@@ -318,8 +319,8 @@ namespace rct {
         addKeys(pk.mask, pk.mask, bH);
         return make_tuple(sk, pk);
     }
-    
-    key zeroCommit(xmr_amount amount) {
+
+    key zeroCommit(wazn_amount amount) {
         const zero_commitment *begin = zero_commitments;
         const zero_commitment *end = zero_commitments + sizeof(zero_commitments) / sizeof(zero_commitments[0]);
         const zero_commitment value{amount, rct::zero()};
@@ -333,14 +334,14 @@ namespace rct {
         return addKeys(G, bH);
     }
 
-    key commit(xmr_amount amount, const key &mask) {
+    key commit(wazn_amount amount, const key &mask) {
         key c;
         genC(c, mask, amount);
         return c;
     }
 
     //generates a random uint long long (for testing)
-    xmr_amount randXmrAmount(xmr_amount upperlimit) {
+    wazn_amount randWaznAmount(wazn_amount upperlimit) {
         return h2d(skGen()) % (upperlimit);
     }
 
@@ -561,7 +562,7 @@ namespace rct {
     void cn_fast_hash(key &hash, const void * data, const std::size_t l) {
         keccak((const uint8_t *)data, l, hash.bytes, 32);
     }
-    
+
     void hash_to_scalar(key &hash, const void * data, const std::size_t l) {
         cn_fast_hash(hash, data, l);
         sc_reduce32(hash.bytes);
@@ -571,7 +572,7 @@ namespace rct {
     void cn_fast_hash(key & hash, const key & in) {
         keccak((const uint8_t *)in.bytes, 32, hash.bytes, 32);
     }
-    
+
     void hash_to_scalar(key & hash, const key & in) {
         cn_fast_hash(hash, in);
         sc_reduce32(hash.bytes);
@@ -583,26 +584,26 @@ namespace rct {
         keccak((const uint8_t *)in.bytes, 32, hash.bytes, 32);
         return hash;
     }
-    
+
      key hash_to_scalar(const key & in) {
         key hash = cn_fast_hash(in);
         sc_reduce32(hash.bytes);
         return hash;
      }
-    
+
     //cn_fast_hash for a 128 byte unsigned char
     key cn_fast_hash128(const void * in) {
         key hash;
         keccak((const uint8_t *)in, 128, hash.bytes, 32);
         return hash;
     }
-    
+
     key hash_to_scalar128(const void * in) {
         key hash = cn_fast_hash128(in);
         sc_reduce32(hash.bytes);
         return hash;
     }
-    
+
     //cn_fast_hash for multisig purpose
     //This takes the outputs and commitments
     //and hashes them into a 32 byte sized key
@@ -612,13 +613,13 @@ namespace rct {
         cn_fast_hash(rv, &PC[0], 64*PC.size());
         return rv;
     }
-    
+
     key hash_to_scalar(const ctkeyV &PC) {
         key rv = cn_fast_hash(PC);
         sc_reduce32(rv.bytes);
         return rv;
     }
-    
+
    //cn_fast_hash for a key-vector of arbitrary length
    //this is useful since you take a number of keys
    //put them in the key vector and it concatenates them
@@ -630,7 +631,7 @@ namespace rct {
        //dp(rv);
        return rv;
    }
-   
+
    key hash_to_scalar(const keyV &keys) {
        key rv = cn_fast_hash(keys);
        sc_reduce32(rv.bytes);
@@ -649,7 +650,7 @@ namespace rct {
        sc_reduce32(rv.bytes);
        return rv;
    }
-    
+
     // Hash a key to p3 representation
     void hash_to_p3(ge_p3 &hash8_p3, const key &k) {
       key hash_key = cn_fast_hash(k);

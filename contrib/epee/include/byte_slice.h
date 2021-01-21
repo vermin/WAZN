@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
@@ -174,4 +175,3 @@ namespace epee
       allocation failure. */
   byte_buffer byte_buffer_increase(byte_buffer buf, std::size_t current, std::size_t more);
 } // epee
-

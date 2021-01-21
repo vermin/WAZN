@@ -1,23 +1,24 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2016, Monero Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -41,8 +42,8 @@
 using namespace crypto;
 using namespace std;
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "ringct"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "ringct"
 
 #define CHECK_AND_ASSERT_MES_L1(expr, ret, message) {if(!(expr)) {MCERROR("verify", message); return ret;}}
 
@@ -138,7 +139,7 @@ namespace rct {
         }
         return bb;
     }
-    
+
     //see above.
     bool verifyBorromean(const boroSig &bb, const ge_p3 P1[64], const ge_p3 P2[64]) {
         key64 Lv1; key chash, LL;
@@ -265,7 +266,7 @@ namespace rct {
             c_to_hash[2*n+4] = aH;
         }
         hwdev.clsag_hash(c_to_hash,c);
-        
+
         size_t i;
         i = (l + 1) % n;
         if (i == 0)
@@ -305,7 +306,7 @@ namespace rct {
             c_to_hash[2*n+4] = R;
             hwdev.clsag_hash(c_to_hash,c_new);
             copy(c,c_new);
-            
+
             i = (i + 1) % n;
             if (i == 0)
                 copy(sig.c1,c);
@@ -388,14 +389,14 @@ namespace rct {
 
         hwdev.mlsag_hash(toHash, c_old);
 
-        
+
         i = (index + 1) % cols;
         if (i == 0) {
             copy(rv.cc, c_old);
         }
         while (i != index) {
 
-            rv.ss[i] = skvGen(rows);            
+            rv.ss[i] = skvGen(rows);
             sc_0(c.bytes);
             for (j = 0; j < dsRows; j++) {
                 addKeys2(L, rv.ss[i][j], c_old, pk[i][j]);
@@ -403,7 +404,7 @@ namespace rct {
                 ge_p3_tobytes(Hi.bytes, &Hi_p3);
                 addKeys3(R, rv.ss[i][j], Hi, c_old, Ip[j].k);
                 toHash[3 * j + 1] = pk[i][j];
-                toHash[3 * j + 2] = L; 
+                toHash[3 * j + 2] = L;
                 toHash[3 * j + 3] = R;
             }
             for (j = dsRows, ii = 0; j < rows; j++, ii++) {
@@ -414,17 +415,17 @@ namespace rct {
             hwdev.mlsag_hash(toHash, c);
             copy(c_old, c);
             i = (i + 1) % cols;
-            
-            if (i == 0) { 
+
+            if (i == 0) {
                 copy(rv.cc, c_old);
-            }   
+            }
         }
         hwdev.mlsag_sign(c, xx, alpha, rows, dsRows, rv.ss[index]);
         if (mscout)
           *mscout = c;
         return rv;
     }
-    
+
     // MLSAG signatures
     // See paper by Noether (https://eprint.iacr.org/2015/1098)
     // This generalization allows for some dimensions not to require linkability;
@@ -477,7 +478,7 @@ namespace rct {
                 ge_tobytes(R.bytes, &R_p2);
 
                 toHash[3 * j + 1] = pk[i][j];
-                toHash[3 * j + 2] = L; 
+                toHash[3 * j + 2] = L;
                 toHash[3 * j + 3] = R;
             }
             for (j = dsRows, ii = 0 ; j < rows ; j++, ii++) {
@@ -491,9 +492,9 @@ namespace rct {
             i = (i + 1);
         }
         sc_sub(c.bytes, c_old.bytes, rv.cc.bytes);
-        return sc_isnonzero(c.bytes) == 0;  
+        return sc_isnonzero(c.bytes) == 0;
     }
-    
+
 
 
     //proveRange and verRange
@@ -503,7 +504,7 @@ namespace rct {
     //   thus this proves that "amount" is in [0, 2^64]
     //   mask is a such that C = aG + bH, and b = amount
     //verRange verifies that \sum Ci = C and that each Ci is a commitment to 0 or 2^i
-    rangeSig proveRange(key & C, key & mask, const xmr_amount & amount) {
+    rangeSig proveRange(key & C, key & mask, const wazn_amount & amount) {
         sc_0(mask.bytes);
         identity(C);
         bits b;
@@ -631,12 +632,12 @@ namespace rct {
     }
 
     //Ring-ct MG sigs
-    //Prove: 
-    //   c.f. https://eprint.iacr.org/2015/1098 section 4. definition 10. 
-    //   This does the MG sig on the "dest" part of the given key matrix, and 
+    //Prove:
+    //   c.f. https://eprint.iacr.org/2015/1098 section 4. definition 10.
+    //   This does the MG sig on the "dest" part of the given key matrix, and
     //   the last row is the sum of input commitments from that column - sum output commitments
     //   this shows that sum inputs = sum outputs
-    //Ver:    
+    //Ver:
     //   verifies the above sig is created corretly
     mgSig proveRctMG(const key &message, const ctkeyM & pubs, const ctkeyV & inSk, const ctkeyV &outSk, const ctkeyV & outPk, const multisig_kLRki *kLRki, key *mscout, unsigned int index, const key &txnFeeKey, hw::device &hwdev) {
         //setup vars
@@ -750,12 +751,12 @@ namespace rct {
 
 
     //Ring-ct MG sigs
-    //Prove: 
-    //   c.f. https://eprint.iacr.org/2015/1098 section 4. definition 10. 
-    //   This does the MG sig on the "dest" part of the given key matrix, and 
+    //Prove:
+    //   c.f. https://eprint.iacr.org/2015/1098 section 4. definition 10.
+    //   This does the MG sig on the "dest" part of the given key matrix, and
     //   the last row is the sum of input commitments from that column - sum output commitments
     //   this shows that sum inputs = sum outputs
-    //Ver:    
+    //Ver:
     //   verifies the above sig is created corretly
     bool verRctMG(const mgSig &mg, const ctkeyM & pubs, const ctkeyV & outPk, const key &txnFeeKey, const key &message) {
         PERF_TIMER(verRctMG);
@@ -793,7 +794,7 @@ namespace rct {
     }
 
     //Ring-ct Simple MG sigs
-    //Ver: 
+    //Ver:
     //This does a simplified version, assuming only post Rct
     //inputs
     bool verRctMGSimple(const key &message, const mgSig &mg, const ctkeyV & pubs, const key & C) {
@@ -946,7 +947,7 @@ namespace rct {
     //replace these when connecting blockchain
     //getKeyFromBlockchain grabs a key from the blockchain at "reference_index" to mix with
     //populateFromBlockchain creates a keymatrix with "mixin" columns and one of the columns is inPk
-    //   the return value are the key matrix, and the index where inPk was put (random).    
+    //   the return value are the key matrix, and the index where inPk was put (random).
     void getKeyFromBlockchain(ctkey & a, size_t reference_index) {
         a.mask = pkGen();
         a.dest = pkGen();
@@ -956,16 +957,16 @@ namespace rct {
     //replace these when connecting blockchain
     //getKeyFromBlockchain grabs a key from the blockchain at "reference_index" to mix with
     //populateFromBlockchain creates a keymatrix with "mixin" + 1 columns and one of the columns is inPk
-    //   the return value are the key matrix, and the index where inPk was put (random).     
-    tuple<ctkeyM, xmr_amount> populateFromBlockchain(ctkeyV inPk, int mixin) {
+    //   the return value are the key matrix, and the index where inPk was put (random).
+    tuple<ctkeyM, wazn_amount> populateFromBlockchain(ctkeyV inPk, int mixin) {
         int rows = inPk.size();
         ctkeyM rv(mixin + 1, inPk);
-        int index = randXmrAmount(mixin);
+        int index = randWaznAmount(mixin);
         int i = 0, j = 0;
         for (i = 0; i <= mixin; i++) {
             if (i != index) {
                 for (j = 0; j < rows; j++) {
-                    getKeyFromBlockchain(rv[i][j], (size_t)randXmrAmount);
+                    getKeyFromBlockchain(rv[i][j], (size_t)randWaznAmount);
                 }
             }
         }
@@ -976,13 +977,13 @@ namespace rct {
     //replace these when connecting blockchain
     //getKeyFromBlockchain grabs a key from the blockchain at "reference_index" to mix with
     //populateFromBlockchain creates a keymatrix with "mixin" columns and one of the columns is inPk
-    //   the return value are the key matrix, and the index where inPk was put (random).     
-    xmr_amount populateFromBlockchainSimple(ctkeyV & mixRing, const ctkey & inPk, int mixin) {
-        int index = randXmrAmount(mixin);
+    //   the return value are the key matrix, and the index where inPk was put (random).
+    wazn_amount populateFromBlockchainSimple(ctkeyV & mixRing, const ctkey & inPk, int mixin) {
+        int index = randWaznAmount(mixin);
         int i = 0;
         for (i = 0; i <= mixin; i++) {
             if (i != index) {
-                getKeyFromBlockchain(mixRing[i], (size_t)randXmrAmount(1000));
+                getKeyFromBlockchain(mixRing[i], (size_t)randWaznAmount(1000));
             } else {
                 mixRing[i] = inPk;
             }
@@ -991,18 +992,18 @@ namespace rct {
     }
 
     //RingCT protocol
-    //genRct: 
+    //genRct:
     //   creates an rctSig with all data necessary to verify the rangeProofs and that the signer owns one of the
     //   columns that are claimed as inputs, and that the sum of inputs  = sum of outputs.
     //   Also contains masked "amount" and "mask" so the receiver can see how much they received
     //verRct:
     //   verifies that all signatures (rangeProogs, MG sig, sum inputs = outputs) are correct
     //decodeRct: (c.f. https://eprint.iacr.org/2015/1098 section 5.1.1)
-    //   uses the attached ecdh info to find the amounts represented by each output commitment 
+    //   uses the attached ecdh info to find the amounts represented by each output commitment
     //   must know the destination private key to find the correct amount, else will return a random number
     //   Note: For txn fees, the last index in the amounts vector should contain that
     //   Thus the amounts vector will be "one" longer than the destinations vectort
-    rctSig genRct(const key &message, const ctkeyV & inSk, const keyV & destinations, const vector<xmr_amount> & amounts, const ctkeyM &mixRing, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, unsigned int index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev) {
+    rctSig genRct(const key &message, const ctkeyV & inSk, const keyV & destinations, const vector<wazn_amount> & amounts, const ctkeyM &mixRing, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, unsigned int index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev) {
         CHECK_AND_ASSERT_THROW_MES(amounts.size() == destinations.size() || amounts.size() == destinations.size() + 1, "Different number of amounts/destinations");
         CHECK_AND_ASSERT_THROW_MES(amount_keys.size() == destinations.size(), "Different number of amount_keys/destinations");
         CHECK_AND_ASSERT_THROW_MES(index < mixRing.size(), "Bad index into mixRing");
@@ -1054,17 +1055,17 @@ namespace rct {
         return rv;
     }
 
-    rctSig genRct(const key &message, const ctkeyV & inSk, const ctkeyV  & inPk, const keyV & destinations, const vector<xmr_amount> & amounts, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, const int mixin, const RCTConfig &rct_config, hw::device &hwdev) {
+    rctSig genRct(const key &message, const ctkeyV & inSk, const ctkeyV  & inPk, const keyV & destinations, const vector<wazn_amount> & amounts, const keyV &amount_keys, const multisig_kLRki *kLRki, multisig_out *msout, const int mixin, const RCTConfig &rct_config, hw::device &hwdev) {
         unsigned int index;
         ctkeyM mixRing;
         ctkeyV outSk;
         tie(mixRing, index) = populateFromBlockchain(inPk, mixin);
         return genRct(message, inSk, destinations, amounts, mixRing, amount_keys, kLRki, msout, index, outSk, rct_config, hwdev);
     }
-    
-    //RCT simple    
+
+    //RCT simple
     //for post-rct only
-    rctSig genRctSimple(const key &message, const ctkeyV & inSk, const keyV & destinations, const vector<xmr_amount> &inamounts, const vector<xmr_amount> &outamounts, xmr_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev) {
+    rctSig genRctSimple(const key &message, const ctkeyV & inSk, const keyV & destinations, const vector<wazn_amount> &inamounts, const vector<wazn_amount> &outamounts, wazn_amount txnFee, const ctkeyM & mixRing, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, const std::vector<unsigned int> & index, ctkeyV &outSk, const RCTConfig &rct_config, hw::device &hwdev) {
         const bool bulletproof = rct_config.range_proof_type != RangeProofBorromean;
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() > 0, "Empty inamounts");
         CHECK_AND_ASSERT_THROW_MES(inamounts.size() == inSk.size(), "Different number of inamounts/inSk");
@@ -1193,7 +1194,7 @@ namespace rct {
             rv.ecdhInfo[i].amount = d2h(outamounts[i]);
             hwdev.ecdhEncode(rv.ecdhInfo[i], amount_keys[i], rv.type == RCTTypeBulletproof2 || rv.type == RCTTypeCLSAG);
         }
-            
+
         //set txn fee
         rv.txnFee = txnFee;
 //        TODO: unused ??
@@ -1236,7 +1237,7 @@ namespace rct {
         return rv;
     }
 
-    rctSig genRctSimple(const key &message, const ctkeyV & inSk, const ctkeyV & inPk, const keyV & destinations, const vector<xmr_amount> &inamounts, const vector<xmr_amount> &outamounts, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, xmr_amount txnFee, unsigned int mixin, const RCTConfig &rct_config, hw::device &hwdev) {
+    rctSig genRctSimple(const key &message, const ctkeyV & inSk, const ctkeyV & inPk, const keyV & destinations, const vector<wazn_amount> &inamounts, const vector<wazn_amount> &outamounts, const keyV &amount_keys, const std::vector<multisig_kLRki> *kLRki, multisig_out *msout, wazn_amount txnFee, unsigned int mixin, const RCTConfig &rct_config, hw::device &hwdev) {
         std::vector<unsigned int> index;
         index.resize(inPk.size());
         ctkeyM mixRing;
@@ -1250,15 +1251,15 @@ namespace rct {
     }
 
     //RingCT protocol
-    //genRct: 
+    //genRct:
     //   creates an rctSig with all data necessary to verify the rangeProofs and that the signer owns one of the
     //   columns that are claimed as inputs, and that the sum of inputs  = sum of outputs.
     //   Also contains masked "amount" and "mask" so the receiver can see how much they received
     //verRct:
     //   verifies that all signatures (rangeProogs, MG sig, sum inputs = outputs) are correct
     //decodeRct: (c.f. https://eprint.iacr.org/2015/1098 section 5.1.1)
-    //   uses the attached ecdh info to find the amounts represented by each output commitment 
-    //   must know the destination private key to find the correct amount, else will return a random number    
+    //   uses the attached ecdh info to find the amounts represented by each output commitment
+    //   must know the destination private key to find the correct amount, else will return a random number
     bool verRct(const rctSig & rv, bool semantics) {
         PERF_TIMER(verRct);
         CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull, false, "verRct called on non-full rctSig");
@@ -1504,16 +1505,16 @@ namespace rct {
     }
 
     //RingCT protocol
-    //genRct: 
+    //genRct:
     //   creates an rctSig with all data necessary to verify the rangeProofs and that the signer owns one of the
     //   columns that are claimed as inputs, and that the sum of inputs  = sum of outputs.
     //   Also contains masked "amount" and "mask" so the receiver can see how much they received
     //verRct:
     //   verifies that all signatures (rangeProogs, MG sig, sum inputs = outputs) are correct
     //decodeRct: (c.f. https://eprint.iacr.org/2015/1098 section 5.1.1)
-    //   uses the attached ecdh info to find the amounts represented by each output commitment 
-    //   must know the destination private key to find the correct amount, else will return a random number    
-    xmr_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, key & mask, hw::device &hwdev) {
+    //   uses the attached ecdh info to find the amounts represented by each output commitment
+    //   must know the destination private key to find the correct amount, else will return a random number
+    wazn_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, key & mask, hw::device &hwdev) {
         CHECK_AND_ASSERT_MES(rv.type == RCTTypeFull, false, "decodeRct called on non-full rctSig");
         CHECK_AND_ASSERT_THROW_MES(i < rv.ecdhInfo.size(), "Bad index");
         CHECK_AND_ASSERT_THROW_MES(rv.outPk.size() == rv.ecdhInfo.size(), "Mismatched sizes of rv.outPk and rv.ecdhInfo");
@@ -1538,12 +1539,12 @@ namespace rct {
         return h2d(amount);
     }
 
-    xmr_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, hw::device &hwdev) {
+    wazn_amount decodeRct(const rctSig & rv, const key & sk, unsigned int i, hw::device &hwdev) {
       key mask;
       return decodeRct(rv, sk, i, mask, hwdev);
     }
 
-    xmr_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, key &mask, hw::device &hwdev) {
+    wazn_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, key &mask, hw::device &hwdev) {
         CHECK_AND_ASSERT_MES(rv.type == RCTTypeSimple || rv.type == RCTTypeBulletproof || rv.type == RCTTypeBulletproof2 || rv.type == RCTTypeCLSAG, false, "decodeRct called on non simple rctSig");
         CHECK_AND_ASSERT_THROW_MES(i < rv.ecdhInfo.size(), "Bad index");
         CHECK_AND_ASSERT_THROW_MES(rv.outPk.size() == rv.ecdhInfo.size(), "Mismatched sizes of rv.outPk and rv.ecdhInfo");
@@ -1568,7 +1569,7 @@ namespace rct {
         return h2d(amount);
     }
 
-    xmr_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, hw::device &hwdev) {
+    wazn_amount decodeRctSimple(const rctSig & rv, const key & sk, unsigned int i, hw::device &hwdev) {
       key mask;
       return decodeRctSimple(rv, sk, i, mask, hwdev);
     }

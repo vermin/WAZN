@@ -1,23 +1,24 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2016, Monero Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -35,15 +36,15 @@
 using namespace crypto;
 using namespace std;
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "ringct"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "ringct"
 
 namespace rct {
 
-    //dp 
+    //dp
     //Debug printing for the above types
-    //Actually use DP(value) and #define DBG    
-    
+    //Actually use DP(value) and #define DBG
+
     void dp(key a) {
         int j = 0;
         printf("\"");
@@ -92,7 +93,7 @@ namespace rct {
         printf("]");
         printf("\n");
     }
-    void dp(xmr_amount vali) {
+    void dp(wazn_amount vali) {
         printf("x: ");
         std::cout << vali;
         printf("\n\n");
@@ -114,42 +115,42 @@ namespace rct {
         printf("%s\n", st);
     }
 
-    //Various Conversions 
-    
+    //Various Conversions
+
     //uint long long to 32 byte key
-    void d2h(key & amounth, const xmr_amount in) {
+    void d2h(key & amounth, const wazn_amount in) {
         sc_0(amounth.bytes);
         memcpy_swap64le(amounth.bytes, &in, 1);
     }
-    
+
     //uint long long to 32 byte key
-    key d2h(const xmr_amount in) {
+    key d2h(const wazn_amount in) {
         key amounth;
         d2h(amounth, in);
         return amounth;
     }
 
     //uint long long to int[64]
-    void d2b(bits  amountb, xmr_amount val) {
+    void d2b(bits  amountb, wazn_amount val) {
         int i = 0;
         while (i < 64) {
             amountb[i++] = val & 1;
             val >>= 1;
         }
     }
-    
+
     //32 byte key to uint long long
     // if the key holds a value > 2^64
-    // then the value in the first 8 bytes is returned    
-    xmr_amount h2d(const key & test) {
-        xmr_amount vali = 0;
+    // then the value in the first 8 bytes is returned
+    wazn_amount h2d(const key & test) {
+        wazn_amount vali = 0;
         int j = 0;
         for (j = 7; j >= 0; j--) {
-            vali = (xmr_amount)(vali * 256 + (unsigned char)test.bytes[j]);
+            vali = (wazn_amount)(vali * 256 + (unsigned char)test.bytes[j]);
         }
         return vali;
     }
-    
+
     //32 byte key to int[64]
     void h2b(bits amountb2, const key & test) {
         int val = 0, i = 0, j = 0;
@@ -162,7 +163,7 @@ namespace rct {
             }
         }
     }
-    
+
     //int[64] to 32 byte key
     void b2h(key & amountdh, const bits amountb2) {
         int byte, i, j;
@@ -177,13 +178,13 @@ namespace rct {
             amountdh[j] = (unsigned char)(0x00);
         }
     }
-    
+
     //int[64] to uint long long
-    xmr_amount b2d(bits amountb) {
-        xmr_amount vali = 0;
+    wazn_amount b2d(bits amountb) {
+        wazn_amount vali = 0;
         int j = 0;
         for (j = 63; j >= 0; j--) {
-            vali = (xmr_amount)(vali * 2 + amountb[j]);
+            vali = (wazn_amount)(vali * 2 + amountb[j]);
         }
         return vali;
     }

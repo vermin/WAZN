@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
@@ -40,8 +41,8 @@
 #include <crtdbg.h>
 #endif
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "wallet.wallet2"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "wallet.wallet2"
 
 // workaround for a suspected bug in pthread/kernel on MacOS X
 #ifdef __APPLE__
@@ -95,7 +96,7 @@ namespace wallet_args
     const std::function<void(const std::string&, bool)> &print,
     const char *default_log_name,
     bool log_to_console)
-  
+
   {
     namespace bf = boost::filesystem;
     namespace po = boost::program_options;
@@ -131,7 +132,7 @@ namespace wallet_args
     command_line::add_arg(desc_params, arg_max_concurrency);
     command_line::add_arg(desc_params, arg_config_file);
 
-    i18n_set_language("translations", "monero", lang);
+    i18n_set_language("translations", "wazn", lang);
 
     po::options_description desc_all;
     desc_all.add(desc_general).add(desc_params);
@@ -144,8 +145,8 @@ namespace wallet_args
 
       if (command_line::get_arg(vm, command_line::arg_help))
       {
-        Print(print) << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL;
-        Print(print) << wallet_args::tr("This is the command line monero wallet. It needs to connect to a monero\n"
+        Print(print) << "Wazn '" << WAZN_RELEASE_NAME << "' (v" << WAZN_VERSION_FULL << ")" << ENDL;
+        Print(print) << wallet_args::tr("This is the command line WAZN wallet. It needs to connect to a WAZN\n"
 												  "daemon to work correctly.") << ENDL;
         Print(print) << wallet_args::tr("Usage:") << ENDL << "  " << usage;
         Print(print) << desc_all;
@@ -154,7 +155,7 @@ namespace wallet_args
       }
       else if (command_line::get_arg(vm, command_line::arg_version))
       {
-        Print(print) << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")";
+        Print(print) << "Wazn '" << WAZN_RELEASE_NAME << "' (v" << WAZN_VERSION_FULL << ")";
         should_terminate = true;
         return true;
       }
@@ -205,13 +206,13 @@ namespace wallet_args
     if (!command_line::is_arg_defaulted(vm, arg_max_concurrency))
       tools::set_max_concurrency(command_line::get_arg(vm, arg_max_concurrency));
 
-    Print(print) << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")";
+    Print(print) << "Wazn '" << WAZN_RELEASE_NAME << "' (v" << WAZN_VERSION_FULL << ")";
 
     if (!command_line::is_arg_defaulted(vm, arg_log_level))
       MINFO("Setting log level = " << command_line::get_arg(vm, arg_log_level));
     else
     {
-      const char *logs = getenv("MONERO_LOGS");
+      const char *logs = getenv("WAZN_LOGS");
       MINFO("Setting log levels = " << (logs ? logs : "<default>"));
     }
     MINFO(wallet_args::tr("Logging to: ") << log_path);

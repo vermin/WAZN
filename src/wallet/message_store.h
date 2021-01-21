@@ -1,3 +1,4 @@
+// Copyright (c) 2019-2020 WAZN Project
 // Copyright (c) 2018, The Monero Project
 //
 // All rights reserved.
@@ -49,8 +50,8 @@
 #include "serialization/containers.h"
 #include "message_transporter.h"
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "wallet.mms"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "wallet.mms"
 #define AUTO_CONFIG_TOKEN_BYTES 4
 #define AUTO_CONFIG_TOKEN_PREFIX "mms"
 
@@ -143,8 +144,8 @@ namespace mms
   {
     std::string label;
     std::string transport_address;
-    bool monero_address_known;
-    cryptonote::account_public_address monero_address;
+    bool wazn_address_known;
+    cryptonote::account_public_address wazn_address;
     bool me;
     uint32_t index;
     std::string auto_config_token;
@@ -157,8 +158,8 @@ namespace mms
       VERSION_FIELD(0)
       FIELD(label)
       FIELD(transport_address)
-      FIELD(monero_address_known)
-      FIELD(monero_address)
+      FIELD(wazn_address_known)
+      FIELD(wazn_address)
       FIELD(me)
       VARINT_FIELD(index)
       FIELD(auto_config_token)
@@ -170,8 +171,8 @@ namespace mms
 
     authorized_signer()
     {
-      monero_address_known = false;
-      memset(&monero_address, 0, sizeof(cryptonote::account_public_address));
+      wazn_address_known = false;
+      memset(&wazn_address, 0, sizeof(cryptonote::account_public_address));
       me = false;
       index = 0;
       auto_config_public_key = crypto::null_pkey;
@@ -194,18 +195,18 @@ namespace mms
     crypto::public_key encryption_public_key;
     message internal_message;
   };
-  
+
   struct auto_config_data
   {
     std::string label;
     std::string transport_address;
-    cryptonote::account_public_address monero_address;
+    cryptonote::account_public_address wazn_address;
 
     BEGIN_SERIALIZE_OBJECT()
       VERSION_FIELD(0)
       FIELD(label)
       FIELD(transport_address)
-      FIELD(monero_address)
+      FIELD(wazn_address)
     END_SERIALIZE()
   };
 
@@ -286,10 +287,10 @@ namespace mms
                     uint32_t index,
                     const boost::optional<std::string> &label,
                     const boost::optional<std::string> &transport_address,
-                    const boost::optional<cryptonote::account_public_address> monero_address);
+                    const boost::optional<cryptonote::account_public_address> wazn_address);
 
     const authorized_signer &get_signer(uint32_t index) const;
-    bool get_signer_index_by_monero_address(const cryptonote::account_public_address &monero_address, uint32_t &index) const;
+    bool get_signer_index_by_wazn_address(const cryptonote::account_public_address &wazn_address, uint32_t &index) const;
     bool get_signer_index_by_label(const std::string label, uint32_t &index) const;
     const std::vector<authorized_signer> &get_all_signers() const { return m_signers; };
     bool signer_config_complete() const;
@@ -377,7 +378,7 @@ namespace mms
     static const char* message_direction_to_string(message_direction direction);
     static const char* message_state_to_string(message_state state);
     std::string signer_to_string(const authorized_signer &signer, uint32_t max_width);
-    
+
     static const char *tr(const char *str) { return i18n_translate(str, "tools::mms"); }
     static void init_options(boost::program_options::options_description& desc_params);
 
@@ -457,8 +458,8 @@ namespace boost
     {
       a & x.label;
       a & x.transport_address;
-      a & x.monero_address_known;
-      a & x.monero_address;
+      a & x.wazn_address_known;
+      a & x.wazn_address;
       a & x.me;
       a & x.index;
       if (ver < 1)
@@ -469,7 +470,7 @@ namespace boost
       a & x.auto_config_public_key;
       a & x.auto_config_secret_key;
       a & x.auto_config_transport_address;
-      a & x.auto_config_running;  
+      a & x.auto_config_running;
     }
 
     template <class Archive>
@@ -477,7 +478,7 @@ namespace boost
     {
       a & x.label;
       a & x.transport_address;
-      a & x.monero_address;
+      a & x.wazn_address;
     }
 
     template <class Archive>

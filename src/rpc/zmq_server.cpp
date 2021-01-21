@@ -1,21 +1,22 @@
+// Copyright (c) 2019-2021 WAZN Project
 // Copyright (c) 2016-2020, The Monero Project
-// 
+//
 // All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-// 
+//
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-// 
+//
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-// 
+//
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -37,8 +38,8 @@
 #include "byte_slice.h"
 #include "rpc/zmq_pub.h"
 
-#undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "net.zmq"
+#undef WAZN_DEFAULT_LOG_CATEGORY
+#define WAZN_DEFAULT_LOG_CATEGORY "net.zmq"
 
 namespace cryptonote
 {
@@ -58,20 +59,20 @@ namespace
     out.reset(zmq_socket(context, type));
     if (!out)
     {
-      MONERO_LOG_ZMQ_ERROR("Failed to create ZMQ socket");
+      WAZN_LOG_ZMQ_ERROR("Failed to create ZMQ socket");
       return nullptr;
     }
 
     if (zmq_setsockopt(out.get(), ZMQ_MAXMSGSIZE, std::addressof(max_message_size), sizeof(max_message_size)) != 0)
     {
-      MONERO_LOG_ZMQ_ERROR("Failed to set maximum incoming message size");
+      WAZN_LOG_ZMQ_ERROR("Failed to set maximum incoming message size");
       return nullptr;
     }
 
     static constexpr const int linger_value = std::chrono::milliseconds{linger_timeout}.count();
     if (zmq_setsockopt(out.get(), ZMQ_LINGER, std::addressof(linger_value), sizeof(linger_value)) != 0)
     {
-      MONERO_LOG_ZMQ_ERROR("Failed to set linger timeout");
+      WAZN_LOG_ZMQ_ERROR("Failed to set linger timeout");
       return nullptr;
     }
 
@@ -79,7 +80,7 @@ namespace
     {
       if (zmq_bind(out.get(), address.c_str()) < 0)
       {
-        MONERO_LOG_ZMQ_ERROR("ZMQ bind failed");
+        WAZN_LOG_ZMQ_ERROR("ZMQ bind failed");
         return nullptr;
       }
       MINFO("ZMQ now listening at " << address);
@@ -101,7 +102,7 @@ ZmqServer::ZmqServer(RpcHandler& h) :
     shared_state(nullptr)
 {
     if (!context)
-        MONERO_ZMQ_THROW("Unable to create ZMQ context");
+        WAZN_ZMQ_THROW("Unable to create ZMQ context");
 }
 
 ZmqServer::~ZmqServer()
@@ -148,23 +149,23 @@ void ZmqServer::serve()
     while (1)
     {
       if (pub)
-        MONERO_UNWRAP(net::zmq::retry_op(zmq_poll, sockets.data(), sockets.size(), -1));
+        WAZN_UNWRAP(net::zmq::retry_op(zmq_poll, sockets.data(), sockets.size(), -1));
 
       if (sockets[0].revents)
         state->relay_to_pub(relay.get(), pub.get());
 
       if (sockets[1].revents)
-        state->sub_request(MONERO_UNWRAP(net::zmq::receive(pub.get(), ZMQ_DONTWAIT)));
+        state->sub_request(WAZN_UNWRAP(net::zmq::receive(pub.get(), ZMQ_DONTWAIT)));
 
       if (!pub || sockets[2].revents)
       {
-        std::string message = MONERO_UNWRAP(net::zmq::receive(rep.get(), read_flags));
+        std::string message = WAZN_UNWRAP(net::zmq::receive(rep.get(), read_flags));
         MDEBUG("Received RPC request: \"" << message << "\"");
         epee::byte_slice response = handler.handle(std::move(message));
 
         const boost::string_ref response_view{reinterpret_cast<const char*>(response.data()), response.size()};
         MDEBUG("Sending RPC reply: \"" << response_view << "\"");
-        MONERO_UNWRAP(net::zmq::send(std::move(response), rep.get()));
+        WAZN_UNWRAP(net::zmq::send(std::move(response), rep.get()));
       }
     }
   }
