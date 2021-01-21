@@ -36,7 +36,7 @@ set(WAZN_WALLET_CRYPTO_LIBRARY "auto" CACHE STRING "Select a wallet crypto libra
 # If the user specified "auto", detect best library defaulting to internal.
 #
 if (${WAZN_WALLET_CRYPTO_LIBRARY} STREQUAL "auto")
-   wazn_crypto_autodetect(AVAILABLE BEST)
+   monero_crypto_autodetect(AVAILABLE BEST)
   if (DEFINED BEST)
     message("Wallet crypto is using ${BEST} backend")
     set(WAZN_WALLET_CRYPTO_LIBRARY ${BEST})
