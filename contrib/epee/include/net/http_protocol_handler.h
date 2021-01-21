@@ -1,8 +1,6 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
 // Copyright (c) 2006-2013, Andrey N. Sabelnikov, www.sabelnikov.net
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 // * Redistributions of source code must retain the above copyright
@@ -13,7 +11,7 @@
 // * Neither the name of the Andrey N. Sabelnikov nor the
 // names of its contributors may be used to endorse or promote products
 // derived from this software without specific prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -24,7 +22,7 @@
 // ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
+// 
 
 
 
@@ -57,7 +55,6 @@ namespace net_utils
 		{
 			std::string m_folder;
 			std::vector<std::string> m_access_control_origins;
-                        authentication_type m_auth_type;
 			boost::optional<login> m_user;
 			critical_section m_lock;
 		};
@@ -108,7 +105,7 @@ namespace net_utils
 			enum body_transfer_type{
 				http_body_transfer_chunked,
 				http_body_transfer_measure,//mean "Content-Length" valid
-				http_body_transfer_chunked_instead_measure,
+				http_body_transfer_chunked_instead_measure, 
 				http_body_transfer_connection_close,
 				http_body_transfer_multipart,
 				http_body_transfer_undefined
@@ -129,7 +126,7 @@ namespace net_utils
 			std::string get_file_mime_tipe(const std::string& path);
 			std::string get_response_header(const http_response_info& response);
 
-			//major function
+			//major function 
 			inline bool handle_request_and_send_response(const http::http_request_info& query_info);
 
 
@@ -146,7 +143,7 @@ namespace net_utils
 			bool m_want_close;
 			size_t m_newlines;
 		protected:
-			i_service_endpoint* m_psnd_hndlr;
+			i_service_endpoint* m_psnd_hndlr; 
 			t_connection_context& m_conn_context;
 		};
 
@@ -177,40 +174,17 @@ namespace net_utils
 		{
 		public:
 			typedef custum_handler_config<t_connection_context> config_type;
-
+			
 			http_custom_handler(i_service_endpoint* psnd_hndlr, config_type& config, t_connection_context& conn_context)
 				: simple_http_connection_handler<t_connection_context>(psnd_hndlr, config, conn_context),
-					m_config(config)
-			{
-                switch (m_config.m_auth_type)
-                {
-                case http_auth_none:
-                    m_auth = new http_server_auth_digest{};
-                    break;
-                case http_auth_basic:
-                    m_auth = new http_server_auth_basic{*m_config.m_user};
-                    break;
-                case http_auth_digest:
-                default:
-                    m_auth = (m_config.m_user ? new http_server_auth_digest{*m_config.m_user, config.rng} : new http_server_auth_digest{});
-                    break;
-                }
-            }
-
-            ~http_custom_handler()
-            {
-                if (m_auth != nullptr)
-                {
-                    delete m_auth;
-                    m_auth = nullptr;
-                }
-            }
-
+					m_config(config),
+					m_auth(m_config.m_user ? http_server_auth{*m_config.m_user, config.rng} : http_server_auth{})
+			{}
 			inline bool handle_request(const http_request_info& query_info, http_response_info& response)
 			{
 				CHECK_AND_ASSERT_MES(m_config.m_phandler, false, "m_config.m_phandler is NULL!!!!");
 
-				const auto auth_response = m_auth->get_response(query_info);
+				const auto auth_response = m_auth.get_response(query_info);
 				if (auth_response)
 				{
 					response = std::move(*auth_response);
@@ -228,9 +202,9 @@ namespace net_utils
 
 			virtual bool thread_init()
 			{
-				return m_config.m_phandler->init_server_thread();;
+				return m_config.m_phandler->init_server_thread();
 			}
-
+	
 			virtual bool thread_deinit()
 			{
 				return m_config.m_phandler->deinit_server_thread();
@@ -245,7 +219,7 @@ namespace net_utils
 		private:
 			//simple_http_connection_handler::config_type m_stub_config;
 			config_type& m_config;
-			http_server_auth* m_auth;
+			http_server_auth m_auth;
 		};
 	}
 }

@@ -1,5 +1,3 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2016, Monero Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
@@ -236,6 +234,8 @@ namespace rct {
     }
 
 
+
+
     //Various key generation functions
 
     bool toPointCheckOrder(ge_p3 *P, const unsigned char *data)
@@ -263,7 +263,7 @@ namespace rct {
 
     //Generates a vector of secret key
     //Mainly used in testing
-    keyV skvGen(size_t rows) {
+    keyV skvGen(size_t rows ) {
         CHECK_AND_ASSERT_THROW_MES(rows > 0, "0 keys requested");
         keyV rv(rows);
         size_t i = 0;
@@ -294,12 +294,7 @@ namespace rct {
     }
 
     //generates C =aG + bH from b, a is given..
-    void genC_v1(key & C, const key & a, xmr_amount amount) {
-        key bH = scalarmultH_v1(d2h(amount));
-        addKeys1(C, a, bH);
-    }
-
-    void genC_v2(key & C, const key & a, xmr_amount amount) {
+    void genC(key & C, const key & a, xmr_amount amount) {
         addKeys2(C, a, d2h(amount), rct::H);
     }
 
@@ -309,13 +304,13 @@ namespace rct {
         skpkGen(sk.dest, pk.dest);
         skpkGen(sk.mask, pk.mask);
         key am = d2h(amount);
-        key bH = scalarmultH_v2(am);
+        key bH = scalarmultH(am);
         addKeys(pk.mask, pk.mask, bH);
         return make_tuple(sk, pk);
     }
-
-
-    //generates a <secret , public> / Pedersen commitment but takes bH as input
+    
+    
+    //generates a <secret , public> / Pedersen commitment but takes bH as input 
     tuple<ctkey, ctkey> ctskpkGen(const key &bH) {
         ctkey sk, pk;
         skpkGen(sk.dest, pk.dest);
@@ -323,25 +318,8 @@ namespace rct {
         addKeys(pk.mask, pk.mask, bH);
         return make_tuple(sk, pk);
     }
-
-    key zeroCommit(xmr_amount amount, bool v2)
-    {
-        if (v2)
-            return zeroCommit_v2(amount);
-        else
-            return zeroCommit_v1(amount);
-    }
-
-    key zeroCommit_v1(xmr_amount amount) {
-        key mask = identity();
-        mask = scalarmultBase(mask);
-        key am = d2h(amount);
-        key bH = scalarmultH_v1(am);
-        addKeys(mask, mask, bH);
-        return mask;
-    }
-
-    key zeroCommit_v2(xmr_amount amount) {
+    
+    key zeroCommit(xmr_amount amount) {
         const zero_commitment *begin = zero_commitments;
         const zero_commitment *end = zero_commitments + sizeof(zero_commitments) / sizeof(zero_commitments[0]);
         const zero_commitment value{amount, rct::zero()};
@@ -351,29 +329,13 @@ namespace rct {
             return it->commitment;
         }
         key am = d2h(amount);
-        key bH = scalarmultH_v2(am);
+        key bH = scalarmultH(am);
         return addKeys(G, bH);
     }
 
-    key commit(xmr_amount amount, const key &mask, bool v2)
-    {
-        if (v2)
-            return commit_v2(amount, mask);
-        else
-            return commit_v1(amount, mask);
-    }
-
-    key commit_v1(xmr_amount amount, const key &mask) {
-        key c = scalarmultBase(mask);
-        key am = d2h(amount);
-        key bH = scalarmultH_v1(am);
-        addKeys(c, c, bH);
-        return c;
-    }
-
-    key commit_v2(xmr_amount amount, const key &mask) {
+    key commit(xmr_amount amount, const key &mask) {
         key c;
-        genC_v2(c, mask, amount);
+        genC(c, mask, amount);
         return c;
     }
 
@@ -422,18 +384,9 @@ namespace rct {
         return aP;
     }
 
-    //Computes aH where H= toPoint(cn_fast_hash(G)), G the basepoint
-    key scalarmultH_v1(const key & a) {
-        ge_p3 A;
-        ge_p2 R;
-        CHECK_AND_ASSERT_THROW_MES_L1(ge_frombytes_vartime(&A, H.bytes) == 0, "ge_frombytes_vartime failed at "+boost::lexical_cast<std::string>(__LINE__));
-        ge_scalarmult(&R, a.bytes, &A);
-        key aP;
-        ge_tobytes(aP.bytes, &R);
-        return aP;
-    }
 
-    key scalarmultH_v2(const rct::key & a) {
+    //Computes aH where H= toPoint(cn_fast_hash(G)), G the basepoint
+    key scalarmultH(const key & a) {
         ge_p2 R;
         ge_scalarmult(&R, a.bytes, &ge_p3_H);
         key aP;
@@ -455,12 +408,23 @@ namespace rct {
         return res;
     }
 
-    //Computes lA where l is the curve order
-    bool isInMainSubgroup(const key & a) {
+    //Computes 8P without byte conversion
+    void scalarmult8(ge_p3 &res, const key &P)
+    {
         ge_p3 p3;
-        return toPointCheckOrder(&p3, a.bytes);
+        CHECK_AND_ASSERT_THROW_MES_L1(ge_frombytes_vartime(&p3, P.bytes) == 0, "ge_frombytes_vartime failed at "+boost::lexical_cast<std::string>(__LINE__));
+        ge_p2 p2;
+        ge_p3_to_p2(&p2, &p3);
+        ge_p1p1 p1;
+        ge_mul8(&p1, &p2);
+        ge_p1p1_to_p3(&res, &p1);
     }
 
+    //Computes lA where l is the curve order
+    bool isInMainSubgroup(const key & A) {
+        ge_p3 p3;
+        return toPointCheckOrder(&p3, A.bytes);
+    }
 
     //Curve addition / subtractions
 
@@ -547,6 +511,23 @@ namespace rct {
         ge_tobytes(aAbB.bytes, &rv);
     }
 
+    // addKeys_aGbBcC
+    // computes aG + bB + cC
+    // G is the fixed basepoint and B,C require precomputation
+    void addKeys_aGbBcC(key &aGbBcC, const key &a, const key &b, const ge_dsmp B, const key &c, const ge_dsmp C) {
+        ge_p2 rv;
+        ge_triple_scalarmult_base_vartime(&rv, a.bytes, b.bytes, B, c.bytes, C);
+        ge_tobytes(aGbBcC.bytes, &rv);
+    }
+
+    // addKeys_aAbBcC
+    // computes aA + bB + cC
+    // A,B,C require precomputation
+    void addKeys_aAbBcC(key &aAbBcC, const key &a, const ge_dsmp A, const key &b, const ge_dsmp B, const key &c, const ge_dsmp C) {
+        ge_p2 rv;
+        ge_triple_scalarmult_precomp_vartime(&rv, a.bytes, A, b.bytes, B, c.bytes, C);
+        ge_tobytes(aAbBcC.bytes, &rv);
+    }
 
     //subtract Keys (subtracts curve points)
     //AB = A - B where A, B are curve points
@@ -580,7 +561,7 @@ namespace rct {
     void cn_fast_hash(key &hash, const void * data, const std::size_t l) {
         keccak((const uint8_t *)data, l, hash.bytes, 32);
     }
-
+    
     void hash_to_scalar(key &hash, const void * data, const std::size_t l) {
         cn_fast_hash(hash, data, l);
         sc_reduce32(hash.bytes);
@@ -590,7 +571,7 @@ namespace rct {
     void cn_fast_hash(key & hash, const key & in) {
         keccak((const uint8_t *)in.bytes, 32, hash.bytes, 32);
     }
-
+    
     void hash_to_scalar(key & hash, const key & in) {
         cn_fast_hash(hash, in);
         sc_reduce32(hash.bytes);
@@ -602,26 +583,26 @@ namespace rct {
         keccak((const uint8_t *)in.bytes, 32, hash.bytes, 32);
         return hash;
     }
-
+    
      key hash_to_scalar(const key & in) {
         key hash = cn_fast_hash(in);
         sc_reduce32(hash.bytes);
         return hash;
      }
-
+    
     //cn_fast_hash for a 128 byte unsigned char
     key cn_fast_hash128(const void * in) {
         key hash;
         keccak((const uint8_t *)in, 128, hash.bytes, 32);
         return hash;
     }
-
+    
     key hash_to_scalar128(const void * in) {
         key hash = cn_fast_hash128(in);
         sc_reduce32(hash.bytes);
         return hash;
     }
-
+    
     //cn_fast_hash for multisig purpose
     //This takes the outputs and commitments
     //and hashes them into a 32 byte sized key
@@ -631,13 +612,13 @@ namespace rct {
         cn_fast_hash(rv, &PC[0], 64*PC.size());
         return rv;
     }
-
+    
     key hash_to_scalar(const ctkeyV &PC) {
         key rv = cn_fast_hash(PC);
         sc_reduce32(rv.bytes);
         return rv;
     }
-
+    
    //cn_fast_hash for a key-vector of arbitrary length
    //this is useful since you take a number of keys
    //put them in the key vector and it concatenates them
@@ -649,7 +630,7 @@ namespace rct {
        //dp(rv);
        return rv;
    }
-
+   
    key hash_to_scalar(const keyV &keys) {
        key rv = cn_fast_hash(keys);
        sc_reduce32(rv.bytes);
@@ -668,43 +649,15 @@ namespace rct {
        sc_reduce32(rv.bytes);
        return rv;
    }
-
-    key hashToPointSimple(const key & hh) {
-        key pointk;
-        ge_p1p1 point2;
-        ge_p2 point;
-        ge_p3 res;
-        key h = cn_fast_hash(hh);
-        CHECK_AND_ASSERT_THROW_MES_L1(ge_frombytes_vartime(&res, h.bytes) == 0, "ge_frombytes_vartime failed at "+boost::lexical_cast<std::string>(__LINE__));
-        ge_p3_to_p2(&point, &res);
-        ge_mul8(&point2, &point);
-        ge_p1p1_to_p3(&res, &point2);
-        ge_p3_tobytes(pointk.bytes, &res);
-        return pointk;
-    }
-
-    key hashToPoint(const key & hh) {
-        key pointk;
-        ge_p2 point;
-        ge_p1p1 point2;
-        ge_p3 res;
-        key h = cn_fast_hash(hh);
-        ge_fromfe_frombytes_vartime(&point, h.bytes);
-        ge_mul8(&point2, &point);
-        ge_p1p1_to_p3(&res, &point2);
-        ge_p3_tobytes(pointk.bytes, &res);
-        return pointk;
-    }
-
-    void hashToPoint(key & pointk, const key & hh) {
-        ge_p2 point;
-        ge_p1p1 point2;
-        ge_p3 res;
-        key h = cn_fast_hash(hh);
-        ge_fromfe_frombytes_vartime(&point, h.bytes);
-        ge_mul8(&point2, &point);
-        ge_p1p1_to_p3(&res, &point2);
-        ge_p3_tobytes(pointk.bytes, &res);
+    
+    // Hash a key to p3 representation
+    void hash_to_p3(ge_p3 &hash8_p3, const key &k) {
+      key hash_key = cn_fast_hash(k);
+      ge_p2 hash_p2;
+      ge_fromfe_frombytes_vartime(&hash_p2, hash_key.bytes);
+      ge_p1p1 hash8_p1p1;
+      ge_mul8(&hash8_p1p1, &hash_p2);
+      ge_p1p1_to_p3(&hash8_p3, &hash8_p1p1);
     }
 
     //sums a vector of curve points (for scalars use sc_add)
@@ -727,13 +680,11 @@ namespace rct {
         cn_fast_hash(hash, data, sizeof(data));
         return hash;
     }
-
     static void xor8(key &v, const key &k)
     {
         for (int i = 0; i < 8; ++i)
             v.bytes[i] ^= k.bytes[i];
     }
-
     key genCommitmentMask(const key &sk)
     {
         char data[15 + sizeof(key)];
@@ -759,7 +710,6 @@ namespace rct {
           sc_add(unmasked.amount.bytes, unmasked.amount.bytes, sharedSec2.bytes);
         }
     }
-
     void ecdhDecode(ecdhTuple & masked, const key & sharedSec, bool v2) {
         //decode
         if (v2)

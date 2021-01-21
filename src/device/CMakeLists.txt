@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
 #
@@ -58,6 +58,7 @@ endif()
 
 set(device_private_headers)
 
+
 monero_private_headers(device
   ${device_private_headers})
 
@@ -71,6 +72,7 @@ target_link_libraries(device
     ${HIDAPI_LIBRARIES}
     cncrypto
     ringct_basic
+    wallet-crypto
     ${OPENSSL_CRYPTO_LIBRARIES}
     ${Boost_SERIALIZATION_LIBRARY}
   PRIVATE

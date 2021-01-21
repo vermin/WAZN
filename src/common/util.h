@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -27,10 +25,10 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
+// 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-#pragma once
+#pragma once 
 
 #include <boost/thread/locks.hpp>
 #include <boost/thread/mutex.hpp>
@@ -48,11 +46,12 @@
 #endif
 
 #include "crypto/hash.h"
+#include "cryptonote_config.h"
 
 /*! \brief Various Tools
  *
- *
- *
+ *  
+ * 
  */
 namespace tools
 {
@@ -121,12 +120,12 @@ namespace tools
 
 #ifdef WIN32
   /**
-   * @brief
+   * @brief 
    *
    * @param nfolder
    * @param iscreate
    *
-   * @return
+   * @return 
    */
   std::string get_special_folder_path(int nfolder, bool iscreate);
 #endif
@@ -141,7 +140,7 @@ namespace tools
 
   /*! \brief creates directories for a path
    *
-   *  wrapper around boost::filesyste::create_directories.
+   *  wrapper around boost::filesyste::create_directories.  
    *  (ensure-directory-exists): greenspun's tenth rule in action!
    */
   bool create_directories_if_necessary(const std::string& path);
@@ -152,8 +151,6 @@ namespace tools
   bool sanitize_locale();
 
   bool disable_core_dumps();
-
-  bool check_aesni();
 
   bool on_startup();
 
@@ -231,6 +228,7 @@ namespace tools
   unsigned get_max_concurrency();
 
   bool is_local_address(const std::string &address);
+  bool is_privacy_preserving_network(const std::string &address);
   int vercmp(const char *v0, const char *v1); // returns < 0, 0, > 0, similar to strcmp, but more human friendly than lexical - does not attempt to validate
 
   bool sha256sum(const uint8_t *data, size_t len, crypto::hash &hash);
@@ -256,4 +254,6 @@ namespace tools
   void clear_screen();
 
   std::vector<std::pair<std::string, size_t>> split_string_by_width(const std::string &s, size_t columns);
+
+  uint64_t cumulative_block_sync_weight(cryptonote::network_type nettype, uint64_t start_block, uint64_t num_blocks);
 }

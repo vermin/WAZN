@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -56,8 +54,10 @@ static uint8_t get_block_version(const cryptonote::block &b)
   return b.major_version;
 }
 
-HardFork::HardFork(cryptonote::BlockchainDB &db, uint8_t original_version, uint64_t original_version_till_height, uint64_t window_size, uint8_t default_threshold_percent):
+HardFork::HardFork(cryptonote::BlockchainDB &db, uint8_t original_version, uint64_t original_version_till_height, time_t forked_time, time_t update_time, uint64_t window_size, uint8_t default_threshold_percent):
   db(db),
+  forked_time(forked_time),
+  update_time(update_time),
   window_size(window_size),
   default_threshold_percent(default_threshold_percent),
   original_version(original_version),
@@ -70,7 +70,7 @@ HardFork::HardFork(cryptonote::BlockchainDB &db, uint8_t original_version, uint6
     throw "default_threshold_percent needs to be between 0 and 100";
 }
 
-bool HardFork::add_fork(uint8_t version, uint64_t height, uint8_t threshold)
+bool HardFork::add_fork(uint8_t version, uint64_t height, uint8_t threshold, time_t time)
 {
   CRITICAL_REGION_LOCAL(lock);
 
@@ -82,16 +82,18 @@ bool HardFork::add_fork(uint8_t version, uint64_t height, uint8_t threshold)
       return false;
     if (height <= heights.back().height)
       return false;
+    if (time <= heights.back().time)
+      return false;
   }
   if (threshold > 100)
     return false;
-  heights.push_back(Params(version, height, threshold));
+  heights.push_back(hardfork_t(version, height, threshold, time));
   return true;
 }
 
-bool HardFork::add_fork(uint8_t version, uint64_t height)
+bool HardFork::add_fork(uint8_t version, uint64_t height, time_t time)
 {
-  return add_fork(version, height, default_threshold_percent);
+  return add_fork(version, height, default_threshold_percent, time);
 }
 
 uint8_t HardFork::get_effective_version(uint8_t voting_version) const
@@ -169,7 +171,7 @@ void HardFork::init()
 
   // add a placeholder for the default version, to avoid special cases
   if (heights.empty())
-    heights.push_back(Params(original_version, 0, 0));
+    heights.push_back(hardfork_t(original_version, 0, 0, 0));
 
   versions.clear();
   for (size_t n = 0; n < 256; ++n)
@@ -321,6 +323,27 @@ int HardFork::get_voted_fork_index(uint64_t height) const
   return current_fork_index;
 }
 
+HardFork::State HardFork::get_state(time_t t) const
+{
+  CRITICAL_REGION_LOCAL(lock);
+
+  // no hard forks setup yet
+  if (heights.size() <= 1)
+    return Ready;
+
+  time_t t_last_fork = heights.back().time;
+  if (t >= t_last_fork + forked_time)
+    return LikelyForked;
+  if (t >= t_last_fork + update_time)
+    return UpdateNeeded;
+  return Ready;
+}
+
+HardFork::State HardFork::get_state() const
+{
+  return get_state(time(NULL));
+}
+
 uint8_t HardFork::get(uint64_t height) const
 {
   CRITICAL_REGION_LOCAL(lock);
@@ -382,12 +405,6 @@ uint8_t HardFork::get_next_version() const
   return original_version;
 }
 
-uint8_t HardFork::get_last_version() const
-{
-  CRITICAL_REGION_LOCAL(lock);
-  return heights[heights.size() - 1].version;
-}
-
 bool HardFork::get_voting_info(uint8_t version, uint32_t &window, uint32_t &votes, uint32_t &threshold, uint64_t &earliest_height, uint8_t &voting) const
 {
   CRITICAL_REGION_LOCAL(lock);
@@ -404,3 +421,4 @@ bool HardFork::get_voting_info(uint8_t version, uint32_t &window, uint32_t &vote
   voting = heights.back().version;
   return enabled;
 }
+

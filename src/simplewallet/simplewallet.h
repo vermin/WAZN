@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2014-2020, The Monero Project
-//
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -27,12 +25,12 @@
 // INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
+// 
 // Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
 /*!
  * \file simplewallet.h
- *
+ * 
  * \brief Header file that declares simple_wallet class.
  */
 #pragma once
@@ -54,6 +52,8 @@
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "wallet.simplewallet"
+// Hardcode Monero's donation address (see #1447)
+constexpr const char MONERO_DONATION_ADDR[] = "888tNkZrPN6JsEgekjMnABU4TBzc2Dt29EPAvkRxbANsAnjyPbb3iQ1YBRk1UXcdRsiKc9dhwMVgN5S9cQUiyoogDavup3H";
 
 /*!
  * \namespace cryptonote
@@ -125,6 +125,7 @@ namespace cryptonote
     bool set_always_confirm_transfers(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_print_ring_members(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_store_tx_info(const std::vector<std::string> &args = std::vector<std::string>());
+    bool set_default_ring_size(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_auto_refresh(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_refresh_type(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_confirm_missing_payment_id(const std::vector<std::string> &args = std::vector<std::string>());
@@ -150,9 +151,13 @@ namespace cryptonote
     bool set_setup_background_mining(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_device_name(const std::vector<std::string> &args = std::vector<std::string>());
     bool set_export_format(const std::vector<std::string> &args = std::vector<std::string>());
+    bool set_load_deprecated_formats(const std::vector<std::string> &args = std::vector<std::string>());
+    bool set_persistent_rpc_client_id(const std::vector<std::string> &args = std::vector<std::string>());
+    bool set_auto_mine_for_rpc_payment_threshold(const std::vector<std::string> &args = std::vector<std::string>());
+    bool set_credits_target(const std::vector<std::string> &args = std::vector<std::string>());
     bool help(const std::vector<std::string> &args = std::vector<std::string>());
+    bool apropos(const std::vector<std::string> &args);
     bool start_mining(const std::vector<std::string> &args);
-    bool set_donate_level(const std::vector<std::string> &args);
     bool stop_mining(const std::vector<std::string> &args);
     bool set_daemon(const std::vector<std::string> &args);
     bool save_bc(const std::vector<std::string> &args);
@@ -162,10 +167,13 @@ namespace cryptonote
     bool show_incoming_transfers(const std::vector<std::string> &args);
     bool show_payments(const std::vector<std::string> &args);
     bool show_blockchain_height(const std::vector<std::string> &args);
-    bool transfer_main(const std::vector<std::string> &args, bool called_by_mms);
+    bool transfer_main(int transfer_type, const std::vector<std::string> &args, bool called_by_mms);
     bool transfer(const std::vector<std::string> &args);
-    bool sweep_main(uint64_t below, const std::vector<std::string> &args);
+    bool locked_transfer(const std::vector<std::string> &args);
+    bool locked_sweep_all(const std::vector<std::string> &args);
+    bool sweep_main(uint32_t account, uint64_t below, bool locked, const std::vector<std::string> &args);
     bool sweep_all(const std::vector<std::string> &args);
+    bool sweep_account(const std::vector<std::string> &args);
     bool sweep_below(const std::vector<std::string> &args);
     bool sweep_single(const std::vector<std::string> &args);
     bool sweep_unmixable(const std::vector<std::string> &args);
@@ -248,6 +256,10 @@ namespace cryptonote
     bool thaw(const std::vector<std::string>& args);
     bool frozen(const std::vector<std::string>& args);
     bool lock(const std::vector<std::string>& args);
+    bool rpc_payment_info(const std::vector<std::string> &args);
+    bool start_mining_for_rpc(const std::vector<std::string> &args);
+    bool stop_mining_for_rpc(const std::vector<std::string> &args);
+    bool show_qr_code(const std::vector<std::string> &args);
     bool net_stats(const std::vector<std::string>& args);
     bool public_nodes(const std::vector<std::string>& args);
     bool welcome(const std::vector<std::string>& args);
@@ -261,12 +273,12 @@ namespace cryptonote
     bool accept_loaded_tx(const std::function<size_t()> get_num_txes, const std::function<const tools::wallet2::tx_construction_data&(size_t)> &get_tx, const std::string &extra_message = std::string());
     bool accept_loaded_tx(const tools::wallet2::unsigned_tx_set &txs);
     bool accept_loaded_tx(const tools::wallet2::signed_tx_set &txs);
-    bool print_ring_members(const std::vector<tools::wallet2::pending_tx>& ptx_vector, std::ostream& ostr);
+    bool process_ring_members(const std::vector<tools::wallet2::pending_tx>& ptx_vector, std::ostream& ostr, bool verbose);
     std::string get_prompt() const;
     bool print_seed(bool encrypted);
     void key_images_sync_intern();
     void on_refresh_finished(uint64_t start_height, uint64_t fetched_blocks, bool is_init, bool received_money);
-    std::pair<std::string, std::string> show_outputs_line(const std::vector<uint64_t> &heights, uint64_t blockchain_height, uint64_t highlight_height = std::numeric_limits<uint64_t>::max()) const;
+    std::pair<std::string, std::string> show_outputs_line(const std::vector<uint64_t> &heights, uint64_t blockchain_height, uint64_t highlight_idx = std::numeric_limits<uint64_t>::max()) const;
     bool freeze_thaw(const std::vector<std::string>& args, bool freeze);
     bool prompt_if_old(const std::vector<tools::wallet2::pending_tx> &ptx_vector);
     bool on_command(bool (simple_wallet::*cmd)(const std::vector<std::string>&), const std::vector<std::string> &args);
@@ -300,9 +312,9 @@ namespace cryptonote
 
     /*!
      * \brief Gets the word seed language from the user.
-     *
+     * 
      * User is asked to choose from a list of supported languages.
-     *
+     * 
      * \return The chosen language.
      */
     std::string get_mnemonic_language();
@@ -324,18 +336,22 @@ namespace cryptonote
     bool check_inactivity();
     bool check_refresh();
     bool check_mms();
+    bool check_rpc_payment();
 
     void handle_transfer_exception(const std::exception_ptr &e, bool trusted_daemon);
+
+    bool check_daemon_rpc_prices(const std::string &daemon_url, uint32_t &actual_cph, uint32_t &claimed_cph);
+
     //----------------- i_wallet2_callback ---------------------
     virtual void on_new_block(uint64_t height, const cryptonote::block& block);
-    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index);
+    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, bool is_change, uint64_t unlock_time);
     virtual void on_unconfirmed_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index);
     virtual void on_money_spent(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& in_tx, uint64_t amount, const cryptonote::transaction& spend_tx, const cryptonote::subaddress_index& subaddr_index);
     virtual void on_skip_transaction(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx);
     virtual boost::optional<epee::wipeable_string> on_get_password(const char *reason);
     virtual void on_device_button_request(uint64_t code);
     virtual boost::optional<epee::wipeable_string> on_device_pin_request();
-    virtual boost::optional<epee::wipeable_string> on_device_passphrase_request(bool on_device);
+    virtual boost::optional<epee::wipeable_string> on_device_passphrase_request(bool & on_device);
     //----------------------------------------------------------
 
     friend class refresh_progress_reporter_t;
@@ -354,7 +370,7 @@ namespace cryptonote
       void update(uint64_t height, bool force = false)
       {
         auto current_time = std::chrono::system_clock::now();
-        const auto node_update_threshold = std::chrono::seconds(DIFFICULTY_TARGET / 2);
+        const auto node_update_threshold = std::chrono::seconds(DIFFICULTY_TARGET_V1 / 2); // use min of V1/V2
         if (node_update_threshold < current_time - m_blockchain_height_update_time || m_blockchain_height <= height)
         {
           update_blockchain_height();
@@ -432,7 +448,6 @@ namespace cryptonote
     std::atomic<bool> m_in_manual_refresh;
     uint32_t m_current_subaddress_account;
 
-    bool m_long_payment_id_support;
     std::atomic<time_t> m_last_activity_time;
     std::atomic<bool> m_locked;
     std::atomic<bool> m_in_command;
@@ -442,6 +457,16 @@ namespace cryptonote
     epee::math_helper::once_a_time_seconds<1> m_inactivity_checker;
     epee::math_helper::once_a_time_seconds_range<get_random_interval<80 * 1000000, 100 * 1000000>> m_refresh_checker;
     epee::math_helper::once_a_time_seconds_range<get_random_interval<90 * 1000000, 110 * 1000000>> m_mms_checker;
+    epee::math_helper::once_a_time_seconds_range<get_random_interval<90 * 1000000, 115 * 1000000>> m_rpc_payment_checker;
+    
+    std::atomic<bool> m_need_payment;
+    boost::posix_time::ptime m_last_rpc_payment_mining_time;
+    bool m_rpc_payment_mining_requested;
+    bool m_daemon_rpc_payment_message_displayed;
+    float m_rpc_payment_hash_rate;
+    std::atomic<bool> m_suspend_rpc_payment_mining;
+
+    std::unordered_map<std::string, uint32_t> m_claimed_cph;
 
     // MMS
     mms::message_store& get_message_store() const { return m_wallet->get_message_store(); };
@@ -455,8 +480,9 @@ namespace cryptonote
     void ask_send_all_ready_messages();
     void check_for_messages();
     bool user_confirms(const std::string &question);
+    bool user_confirms_auto_config();
     bool get_message_from_arg(const std::string &arg, mms::message &m);
-    bool get_number_from_arg(const std::string &arg, uint32_t &number, const uint32_t lower_bound, const uint32_t upper_bound);
+    bool get_number_from_arg(const std::string &arg, uint32_t &number, const uint32_t lower_bound, const uint32_t upper_bound); 
 
     void mms_init(const std::vector<std::string> &args);
     void mms_info(const std::vector<std::string> &args);
@@ -475,6 +501,7 @@ namespace cryptonote
     void mms_help(const std::vector<std::string> &args);
     void mms_send_signer_config(const std::vector<std::string> &args);
     void mms_start_auto_config(const std::vector<std::string> &args);
+    void mms_config_checksum(const std::vector<std::string> &args);
     void mms_stop_auto_config(const std::vector<std::string> &args);
     void mms_auto_config(const std::vector<std::string> &args);
   };

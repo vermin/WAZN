@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2017-2019, The Monero Project
-//
+// Copyright (c) 2017-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -33,23 +31,29 @@
 #include "util.h"
 #include "dns_utils.h"
 #include "updates.h"
-#include "dns_config.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "updates"
 
 namespace tools
 {
-  bool check_updates(const cryptonote::network_type nettype, const std::string &software, std::string &version, std::string &codename, std::string &notice)
+  bool check_updates(const std::string &software, const std::string &buildtag, std::string &version, std::string &hash)
   {
+    std::vector<std::string> records;
     bool found = false;
 
-    dns_config::init(nettype == cryptonote::TESTNET);
+    MDEBUG("Checking updates for " << buildtag << " " << software);
 
-    if (!dns_config::has_update_records())
+    // All four MoneroPulse domains have DNSSEC on and valid
+    static const std::vector<std::string> dns_urls = {
+        "updates.moneropulse.org",
+        "updates.moneropulse.net",
+        "updates.moneropulse.co",
+        "updates.moneropulse.se"
+    };
+
+    if (!tools::dns_utils::load_txt_records_from_dns(records, dns_urls))
       return false;
-
-    std::vector<std::string> records = dns_config::get_update_records();
 
     for (const auto& record : records)
     {
@@ -57,50 +61,59 @@ namespace tools
       boost::split(fields, record, boost::is_any_of(":"));
       if (fields.size() != 4)
       {
-        MWARNING("Update record does not have 4 fields: " << record);
+        MWARNING("Updates record does not have 4 fields: " << record);
         continue;
       }
 
-      if (software != fields[0])
+      if (software != fields[0] || buildtag != fields[1])
         continue;
+
+      bool alnum = true;
+      for (auto c: fields[3])
+        if (!isalnum(c))
+          alnum = false;
+      if (fields[3].size() != 64 && !alnum)
+      {
+        MWARNING("Invalid hash: " << fields[3]);
+        continue;
+      }
 
       // use highest version
       if (found)
       {
-        int cmp = vercmp(version.c_str(), fields[1].c_str());
+        int cmp = vercmp(version.c_str(), fields[2].c_str());
         if (cmp > 0)
           continue;
+        if (cmp == 0 && hash != fields[3])
+          MWARNING("Two matches found for " << software << " version " << version << " on " << buildtag);
       }
 
-      version = fields[1];
-      codename = fields[2];
-      notice = fields[3];
+      version = fields[2];
+      hash = fields[3];
 
-      LOG_PRINT_L1("Found new version " << version << ":" << codename);
+      MINFO("Found new version " << version << " with hash " << hash);
       found = true;
     }
     return found;
   }
 
-  std::string get_update_url(const std::string &software, const std::string &buildtag, const std::string &version)
+  std::string get_update_url(const std::string &software, const std::string &subdir, const std::string &buildtag, const std::string &version, bool user)
   {
-    std::vector<std::string> records = dns_config::get_download_records();
+    const char *base = user ? "https://downloads.getmonero.org/" : "https://updates.getmonero.org/";
+#ifdef _WIN32
+    static const char *extension = strncmp(buildtag.c_str(), "source", 6) ? (strncmp(buildtag.c_str(), "install-", 8) ? ".zip" : ".exe") : ".tar.bz2";
+#elif defined(__APPLE__)
+    static const char *extension = strncmp(software.c_str(), "monero-gui", 10) ? ".tar.bz2" : ".dmg";
+#else
+    static const char extension[] = ".tar.bz2";
+#endif
 
-    std::string key;
-    std::string value;
+    std::string url;
 
-    for (const auto& record : records)
-    {
-      const auto idx = record.find_first_of(':');
-      if (idx != std::string::npos)
-      {
-        key = record.substr(0, idx);
-        value = record.substr(idx + 1);
-        if (buildtag == key)
-          return value;
-      }
-    }
-
-    return "Link not available";
+    url =  base;
+    if (!subdir.empty())
+      url += subdir + "/";
+    url = url + software + "-" + buildtag + "-v" + version + extension;
+    return url;
   }
 }

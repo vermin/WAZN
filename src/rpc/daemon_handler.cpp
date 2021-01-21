@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2019, The Monero Project
+// Copyright (c) 2017-2020, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -28,6 +28,12 @@
 
 #include "daemon_handler.h"
 
+#include <algorithm>
+#include <cstring>
+#include <stdexcept>
+
+#include <boost/uuid/nil_generator.hpp>
+#include <boost/utility/string_ref.hpp>
 // likely included by daemon_handler.h's includes,
 // but including here for clarity
 #include "cryptonote_core/cryptonote_core.h"
@@ -41,6 +47,75 @@ namespace cryptonote
 
 namespace rpc
 {
+  namespace
+  {
+    using handler_function = epee::byte_slice(DaemonHandler& handler, const rapidjson::Value& id, const rapidjson::Value& msg);
+    struct handler_map
+    {
+      const char* method_name;
+      handler_function* call;
+    };
+
+    bool operator<(const handler_map& lhs, const handler_map& rhs) noexcept
+    {
+      return std::strcmp(lhs.method_name, rhs.method_name) < 0;
+    }
+
+    bool operator<(const handler_map& lhs, const std::string& rhs) noexcept
+    {
+      return std::strcmp(lhs.method_name, rhs.c_str()) < 0;
+    }
+
+    template<typename Message>
+    epee::byte_slice handle_message(DaemonHandler& handler, const rapidjson::Value& id, const rapidjson::Value& parameters)
+    {
+      typename Message::Request request{};
+      request.fromJson(parameters);
+
+      typename Message::Response response{};
+      handler.handle(request, response);
+      return FullMessage::getResponse(response, id);
+    }
+
+    constexpr const handler_map handlers[] =
+    {
+      {u8"get_block_hash", handle_message<GetBlockHash>},
+      {u8"get_block_header_by_hash", handle_message<GetBlockHeaderByHash>},
+      {u8"get_block_header_by_height", handle_message<GetBlockHeaderByHeight>},
+      {u8"get_block_headers_by_height", handle_message<GetBlockHeadersByHeight>},
+      {u8"get_blocks_fast", handle_message<GetBlocksFast>},
+      {u8"get_dynamic_fee_estimate", handle_message<GetFeeEstimate>},
+      {u8"get_hashes_fast", handle_message<GetHashesFast>},
+      {u8"get_height", handle_message<GetHeight>},
+      {u8"get_info", handle_message<GetInfo>},
+      {u8"get_last_block_header", handle_message<GetLastBlockHeader>},
+      {u8"get_output_distribution", handle_message<GetOutputDistribution>},
+      {u8"get_output_histogram", handle_message<GetOutputHistogram>},
+      {u8"get_output_keys", handle_message<GetOutputKeys>},
+      {u8"get_peer_list", handle_message<GetPeerList>},
+      {u8"get_rpc_version", handle_message<GetRPCVersion>},
+      {u8"get_transaction_pool", handle_message<GetTransactionPool>},
+      {u8"get_transactions", handle_message<GetTransactions>},
+      {u8"get_tx_global_output_indices", handle_message<GetTxGlobalOutputIndices>},
+      {u8"hard_fork_info", handle_message<HardForkInfo>},
+      {u8"key_images_spent", handle_message<KeyImagesSpent>},
+      {u8"mining_status", handle_message<MiningStatus>},
+      {u8"save_bc", handle_message<SaveBC>},
+      {u8"send_raw_tx", handle_message<SendRawTx>},
+      {u8"send_raw_tx_hex", handle_message<SendRawTxHex>},
+      {u8"set_log_level", handle_message<SetLogLevel>},
+      {u8"start_mining", handle_message<StartMining>},
+      {u8"stop_mining", handle_message<StopMining>}
+    };
+  } // anonymous
+
+  DaemonHandler::DaemonHandler(cryptonote::core& c, t_p2p& p2p)
+    : m_core(c), m_p2p(p2p)
+  {
+    const auto last_sorted = std::is_sorted_until(std::begin(handlers), std::end(handlers));
+    if (last_sorted != std::end(handlers))
+      throw std::logic_error{std::string{"ZMQ JSON-RPC handlers map is not properly sorted, see "} + last_sorted->method_name};
+  }
 
   void DaemonHandler::handle(const GetHeight::Request& req, GetHeight::Response& res)
   {
@@ -53,7 +128,7 @@ namespace rpc
   {
     std::vector<std::pair<std::pair<blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, blobdata> > > > blocks;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_BLOCK_COUNT, COMMAND_RPC_GET_BLOCKS_FAST_MAX_TX_COUNT))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "core::find_blockchain_supplement() returned false";
@@ -107,7 +182,12 @@ namespace rpc
       for (const auto& blob : it->second)
       {
         bwt.transactions.emplace_back();
-        if (!parse_and_validate_tx_from_blob(blob.second, bwt.transactions.back()))
+        bwt.transactions.back().pruned = req.prune;
+
+        const bool parsed = req.prune ?
+          parse_and_validate_tx_base_from_blob(blob.second, bwt.transactions.back()) :
+          parse_and_validate_tx_from_blob(blob.second, bwt.transactions.back());
+        if (!parsed)
         {
           res.blocks.clear();
           res.output_indices.clear();
@@ -276,10 +356,10 @@ namespace rpc
       res.error_details = "Invalid hex";
       return;
     }
-    handleTxBlob(tx_blob, req.relay, res);
+    handleTxBlob(std::move(tx_blob), req.relay, res);
   }
 
-  void DaemonHandler::handleTxBlob(const std::string& tx_blob, bool relay, SendRawTx::Response& res)
+  void DaemonHandler::handleTxBlob(std::string&& tx_blob, bool relay, SendRawTx::Response& res)
   {
     if (!m_p2p.get_payload_object().is_synchronized())
     {
@@ -288,10 +368,9 @@ namespace rpc
       return;
     }
 
-    cryptonote_connection_context fake_context = AUTO_VAL_INIT(fake_context);
     tx_verification_context tvc = AUTO_VAL_INIT(tvc);
 
-    if(!m_core.handle_incoming_tx({tx_blob, crypto::null_hash}, tvc, false, false, !relay) || tvc.m_verifivation_failed)
+    if(!m_core.handle_incoming_tx({tx_blob, crypto::null_hash}, tvc, (relay ? relay_method::local : relay_method::none), false) || tvc.m_verifivation_failed)
     {
       if (tvc.m_verifivation_failed)
       {
@@ -311,42 +390,37 @@ namespace rpc
       if (tvc.m_double_spend)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "double spend";
+        res.error_details += "double spend";
       }
       if (tvc.m_invalid_input)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "invalid input";
+        res.error_details += "invalid input";
       }
       if (tvc.m_invalid_output)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "invalid output";
+        res.error_details += "invalid output";
       }
       if (tvc.m_too_big)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "too big";
+        res.error_details += "too big";
       }
       if (tvc.m_overspend)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "overspend";
+        res.error_details += "overspend";
       }
       if (tvc.m_fee_too_low)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "fee too low";
-      }
-      if (tvc.m_not_rct)
-      {
-        if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "tx is not ringct";
+        res.error_details += "fee too low";
       }
       if (tvc.m_too_few_outputs)
       {
         if (!res.error_details.empty()) res.error_details += " and ";
-        res.error_details = "too few outputs";
+        res.error_details += "too few outputs";
       }
       if (res.error_details.empty())
       {
@@ -356,7 +430,7 @@ namespace rpc
       return;
     }
 
-    if(!tvc.m_should_be_relayed || !relay)
+    if(tvc.m_relay == relay_method::none || !relay)
     {
       MERROR("[SendRawTx]: tx accepted, but not relayed");
       res.error_details = "Not relayed";
@@ -367,8 +441,8 @@ namespace rpc
     }
 
     NOTIFY_NEW_TRANSACTIONS::request r;
-    r.txs.push_back(tx_blob);
-    m_core.get_protocol()->relay_transactions(r, fake_context);
+    r.txs.push_back(std::move(tx_blob));
+    m_core.get_protocol()->relay_transactions(r, boost::uuids::nil_uuid(), epee::net_utils::zone::invalid, relay_method::local);
 
     //TODO: make sure that tx has reached other nodes here, probably wait to receive reflections from other nodes
     res.status = Message::STATUS_OK;
@@ -464,6 +538,7 @@ namespace rpc
     res.info.cumulative_difficulty = (res.info.wide_cumulative_difficulty & 0xffffffffffffffff).convert_to<uint64_t>();
     res.info.block_size_limit = res.info.block_weight_limit = m_core.get_blockchain_storage().get_current_cumulative_block_weight_limit();
     res.info.block_size_median = res.info.block_weight_median = m_core.get_blockchain_storage().get_current_cumulative_block_weight_median();
+    res.info.adjusted_time = m_core.get_blockchain_storage().get_adjusted_time(res.info.height);
     res.info.start_time = (uint64_t)m_core.get_start_time();
     res.info.version = MONERO_VERSION;
 
@@ -677,6 +752,7 @@ namespace rpc
     uint8_t version = req.version > 0 ? req.version : blockchain.get_ideal_hard_fork_version();
     res.info.version = blockchain.get_current_hard_fork_version();
     res.info.enabled = blockchain.get_hard_fork_voting_info(version, res.info.window, res.info.votes, res.info.threshold, res.info.earliest_height, res.info.voting);
+    res.info.state = blockchain.get_hard_fork_state();
     res.status = Message::STATUS_OK;
   }
 
@@ -752,9 +828,21 @@ namespace rpc
     res.status = Message::STATUS_OK;
   }
 
-  void DaemonHandler::handle(const GetPerKBFeeEstimate::Request& req, GetPerKBFeeEstimate::Response& res)
+  void DaemonHandler::handle(const GetFeeEstimate::Request& req, GetFeeEstimate::Response& res)
   {
-    res.estimated_fee_per_kb = m_core.get_blockchain_storage().get_dynamic_per_kb_fee_estimate(req.num_grace_blocks);
+    res.hard_fork_version = m_core.get_blockchain_storage().get_current_hard_fork_version();
+    res.estimated_base_fee = m_core.get_blockchain_storage().get_dynamic_base_fee_estimate(req.num_grace_blocks);
+
+    if (res.hard_fork_version < HF_VERSION_PER_BYTE_FEE)
+    {
+       res.size_scale = 1024; // per KiB fee
+       res.fee_mask = 1;
+    }
+    else
+    {
+      res.size_scale = 1; // per byte fee
+      res.fee_mask = Blockchain::get_fee_quantization_mask();
+    }
     res.status = Message::STATUS_OK;
   }
 
@@ -823,72 +911,28 @@ namespace rpc
     return true;
   }
 
-  std::string DaemonHandler::handle(const std::string& request)
+  epee::byte_slice DaemonHandler::handle(std::string&& request)
   {
     MDEBUG("Handling RPC request: " << request);
 
-    Message* resp_message = NULL;
-
     try
     {
-      FullMessage req_full(request, true);
-
-      rapidjson::Value& req_json = req_full.getMessage();
+      FullMessage req_full(std::move(request), true);
 
       const std::string request_type = req_full.getRequestType();
-
-      // create correct Message subclass and call handle() on it
-      REQ_RESP_TYPES_MACRO(request_type, GetHeight, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetBlocksFast, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetHashesFast, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetTransactions, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, KeyImagesSpent, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetTxGlobalOutputIndices, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, SendRawTx, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, SendRawTxHex, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetInfo, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, StartMining, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, StopMining, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, MiningStatus, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, SaveBC, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetBlockHash, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetLastBlockHeader, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetBlockHeaderByHash, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetBlockHeaderByHeight, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetBlockHeadersByHeight, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetPeerList, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, SetLogLevel, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetTransactionPool, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, HardForkInfo, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetOutputHistogram, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetOutputKeys, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetRPCVersion, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetPerKBFeeEstimate, req_json, resp_message, handle);
-      REQ_RESP_TYPES_MACRO(request_type, GetOutputDistribution, req_json, resp_message, handle);
-
-      // if none of the request types matches
-      if (resp_message == NULL)
-      {
+      const auto matched_handler = std::lower_bound(std::begin(handlers), std::end(handlers), request_type);
+      if (matched_handler == std::end(handlers) || matched_handler->method_name != request_type)
         return BAD_REQUEST(request_type, req_full.getID());
-      }
 
-      FullMessage resp_full = FullMessage::responseMessage(resp_message, req_full.getID());
+      epee::byte_slice response = matched_handler->call(*this, req_full.getID(), req_full.getMessage());
 
-      const std::string response = resp_full.getJson();
-      delete resp_message;
-      resp_message = NULL;
-
-      MDEBUG("Returning RPC response: " << response);
+      const boost::string_ref response_view{reinterpret_cast<const char*>(response.data()), response.size()};
+      MDEBUG("Returning RPC response: " << response_view);
 
       return response;
     }
     catch (const std::exception& e)
     {
-      if (resp_message)
-      {
-        delete resp_message;
-      }
-
       return BAD_JSON(e.what());
     }
   }

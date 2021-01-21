@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -143,10 +143,12 @@ struct UnsignedTransaction
     virtual std::string errorString() const = 0;
     virtual std::vector<uint64_t> amount() const = 0;
     virtual std::vector<uint64_t>  fee() const = 0;
+    virtual std::vector<uint64_t> mixin() const = 0;
     // returns a string with information about all transactions.
     virtual std::string confirmationMessage() const = 0;
     virtual std::vector<std::string> paymentId() const = 0;
     virtual std::vector<std::string> recipientAddress() const = 0;
+    virtual uint64_t minMixinCount() const = 0;
     /*!
      * \brief txCount - number of transactions current transaction will be splitted to
      * \return
@@ -206,6 +208,52 @@ struct TransactionHistory
     virtual TransactionInfo * transaction(const std::string &id) const = 0;
     virtual std::vector<TransactionInfo*> getAll() const = 0;
     virtual void refresh() = 0;
+};
+
+/**
+ * @brief AddressBookRow - provides functions to manage address book
+ */
+struct AddressBookRow {
+public:
+    AddressBookRow(std::size_t _rowId, const std::string &_address, const std::string &_paymentId, const std::string &_description):
+        m_rowId(_rowId),
+        m_address(_address),
+        m_paymentId(_paymentId), 
+        m_description(_description) {}
+ 
+private:
+    std::size_t m_rowId;
+    std::string m_address;
+    std::string m_paymentId;
+    std::string m_description;
+public:
+    std::string extra;
+    std::string getAddress() const {return m_address;} 
+    std::string getDescription() const {return m_description;} 
+    std::string getPaymentId() const {return m_paymentId;} 
+    std::size_t getRowId() const {return m_rowId;}
+};
+
+/**
+ * @brief The AddressBook - interface for 
+Book
+ */
+struct AddressBook
+{
+    enum ErrorCode {
+        Status_Ok,
+        General_Error,
+        Invalid_Address,
+        Invalid_Payment_Id
+    };
+    virtual ~AddressBook() = 0;
+    virtual std::vector<AddressBookRow*> getAll() const = 0;
+    virtual bool addRow(const std::string &dst_addr , const std::string &payment_id, const std::string &description) = 0;  
+    virtual bool deleteRow(std::size_t rowId) = 0;
+    virtual void refresh() = 0;  
+    virtual std::string errorString() const = 0;
+    virtual int errorCode() const = 0;
+    virtual int lookupPaymentID(const std::string &payment_id) const = 0;
 };
 
 struct SubaddressRow {
@@ -459,6 +507,11 @@ struct Wallet
     virtual std::string publicMultisigSignerKey() const = 0;
 
     /*!
+     * \brief stop - interrupts wallet refresh() loop once (doesn't stop background refresh thread)
+     */
+    virtual void stop() = 0;
+
+    /*!
      * \brief store - stores wallet to file.
      * \param path - main filename to store wallet to. additionally stores address file and keys file.
      *               to store to the same file - just pass empty string;
@@ -485,9 +538,10 @@ struct Wallet
      * \param daemon_username
      * \param daemon_password
      * \param lightWallet - start wallet in light mode, connect to a openmonero compatible server.
+     * \param proxy_address - set proxy address, empty string to disable
      * \return  - true on success
      */
-    virtual bool init(const std::string &daemon_address, uint64_t upper_transaction_size_limit = 0, const std::string &daemon_username = "", const std::string &daemon_password = "", bool use_ssl = false, bool lightWallet = false) = 0;
+    virtual bool init(const std::string &daemon_address, uint64_t upper_transaction_size_limit = 0, const std::string &daemon_username = "", const std::string &daemon_password = "", bool use_ssl = false, bool lightWallet = false, const std::string &proxy_address = "") = 0;
 
    /*!
     * \brief createWatchOnly - Creates a watch only wallet
@@ -546,6 +600,7 @@ struct Wallet
     virtual ConnectionStatus connected() const = 0;
     virtual void setTrustedDaemon(bool arg) = 0;
     virtual bool trustedDaemon() const = 0;
+    virtual bool setProxy(const std::string &address) = 0;
     virtual uint64_t balance(uint32_t accountIndex = 0) const = 0;
     uint64_t balanceAll() const {
         uint64_t result = 0;
@@ -770,6 +825,7 @@ struct Wallet
      * \param dst_addr                  vector of destination address as string
      * \param payment_id                optional payment_id, can be empty string
      * \param amount                    vector of amounts
+     * \param mixin_count               mixin count. if 0 passed, wallet will use default value
      * \param subaddr_account           subaddress account from which the input funds are taken
      * \param subaddr_indices           set of subaddress indices to use for transfer or sweeping. if set empty, all are chosen when sweeping, and one or more are automatically chosen when transferring. after execution, returns the set of actually used indices
      * \param priority
@@ -778,7 +834,7 @@ struct Wallet
      */
 
     virtual PendingTransaction * createTransactionMultDest(const std::vector<std::string> &dst_addr, const std::string &payment_id,
-                                                   optional<std::vector<uint64_t>> amount,
+                                                   optional<std::vector<uint64_t>> amount, uint32_t mixin_count,
                                                    PendingTransaction::Priority = PendingTransaction::Priority_Low,
                                                    uint32_t subaddr_account = 0,
                                                    std::set<uint32_t> subaddr_indices = {}) = 0;
@@ -788,6 +844,7 @@ struct Wallet
      * \param dst_addr          destination address as string
      * \param payment_id        optional payment_id, can be empty string
      * \param amount            amount
+     * \param mixin_count       mixin count. if 0 passed, wallet will use default value
      * \param subaddr_account   subaddress account from which the input funds are taken
      * \param subaddr_indices   set of subaddress indices to use for transfer or sweeping. if set empty, all are chosen when sweeping, and one or more are automatically chosen when transferring. after execution, returns the set of actually used indices
      * \param priority
@@ -796,7 +853,7 @@ struct Wallet
      */
 
     virtual PendingTransaction * createTransaction(const std::string &dst_addr, const std::string &payment_id,
-                                                   optional<uint64_t> amount,
+                                                   optional<uint64_t> amount, uint32_t mixin_count,
                                                    PendingTransaction::Priority = PendingTransaction::Priority_Low,
                                                    uint32_t subaddr_account = 0,
                                                    std::set<uint32_t> subaddr_indices = {}) = 0;
@@ -829,6 +886,14 @@ struct Wallet
      */
     virtual void disposeTransaction(PendingTransaction * t) = 0;
 
+    /*!
+     * \brief Estimates transaction fee.
+     * \param destinations Vector consisting of <address, amount> pairs.
+     * \return Estimated fee.
+     */
+    virtual uint64_t estimateTransactionFee(const std::vector<std::pair<std::string, uint64_t>> &destinations,
+                                            PendingTransaction::Priority priority) const = 0;
+
    /*!
     * \brief exportKeyImages - exports key images to file
     * \param filename
@@ -845,9 +910,20 @@ struct Wallet
 
 
     virtual TransactionHistory * history() = 0;
+    virtual AddressBook * addressBook() = 0;
     virtual Subaddress * subaddress() = 0;
     virtual SubaddressAccount * subaddressAccount() = 0;
     virtual void setListener(WalletListener *) = 0;
+    /*!
+     * \brief defaultMixin - returns number of mixins used in transactions
+     * \return
+     */
+    virtual uint32_t defaultMixin() const = 0;
+    /*!
+     * \brief setDefaultMixin - setum number of mixins to be used for new transactions
+     * \param arg
+     */
+    virtual void setDefaultMixin(uint32_t arg) = 0;
 
     /*!
      * \brief setCacheAttribute - attach an arbitrary string to a wallet cache attribute
@@ -1222,6 +1298,16 @@ struct WalletManager
 
     //! resolves an OpenAlias address to a monero address
     virtual std::string resolveOpenAlias(const std::string &address, bool &dnssec_valid) const = 0;
+
+    //! checks for an update and returns version, hash and url
+    static std::tuple<bool, std::string, std::string, std::string, std::string> checkUpdates(
+        const std::string &software,
+        std::string subdir,
+        const char *buildtag = nullptr,
+        const char *current_version = nullptr);
+
+    //! sets proxy address, empty string to disable
+    virtual bool setProxy(const std::string &address) = 0;
 };
 
 

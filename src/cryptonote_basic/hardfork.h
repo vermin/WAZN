@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -31,6 +29,7 @@
 #pragma once
 
 #include "syncobj.h"
+#include "hardforks/hardforks.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 
 namespace cryptonote
@@ -47,17 +46,21 @@ namespace cryptonote
     } State;
 
     static const uint64_t DEFAULT_ORIGINAL_VERSION_TILL_HEIGHT = 0; // <= actual height
+    static const time_t DEFAULT_FORKED_TIME = 31557600; // a year in seconds
+    static const time_t DEFAULT_UPDATE_TIME = 31557600 / 2;
     static const uint64_t DEFAULT_WINDOW_SIZE = 10080; // supermajority window check length - a week
-    static const uint8_t DEFAULT_THRESHOLD_PERCENT = 0;
+    static const uint8_t DEFAULT_THRESHOLD_PERCENT = 80;
 
     /**
      * @brief creates a new HardFork object
      *
      * @param original_version the block version for blocks 0 through to the first fork
+     * @param forked_time the time in seconds before thinking we're forked
+     * @param update_time the time in seconds before thinking we need to update
      * @param window_size the size of the window in blocks to consider for version voting
      * @param default_threshold_percent the size of the majority in percents
      */
-    HardFork(cryptonote::BlockchainDB &db, uint8_t original_version = 1, uint64_t original_version_till_height = DEFAULT_ORIGINAL_VERSION_TILL_HEIGHT, uint64_t window_size = DEFAULT_WINDOW_SIZE, uint8_t default_threshold_percent = DEFAULT_THRESHOLD_PERCENT);
+    HardFork(cryptonote::BlockchainDB &db, uint8_t original_version = 1, uint64_t original_version_till_height = DEFAULT_ORIGINAL_VERSION_TILL_HEIGHT, time_t forked_time = DEFAULT_FORKED_TIME, time_t update_time = DEFAULT_UPDATE_TIME, uint64_t window_size = DEFAULT_WINDOW_SIZE, uint8_t default_threshold_percent = DEFAULT_THRESHOLD_PERCENT);
 
     /**
      * @brief add a new hardfork height
@@ -67,8 +70,9 @@ namespace cryptonote
      * @param version the major block version for the fork
      * @param height The height the hardfork takes effect
      * @param threshold The threshold of votes needed for this fork (0-100)
+     * @param time Approximate time of the hardfork (seconds since epoch)
      */
-    bool add_fork(uint8_t version, uint64_t height, uint8_t threshold);
+    bool add_fork(uint8_t version, uint64_t height, uint8_t threshold, time_t time);
 
     /**
      * @brief add a new hardfork height
@@ -77,8 +81,9 @@ namespace cryptonote
      *
      * @param version the major block version for the fork
      * @param height The height the hardfork takes effect
+     * @param time Approximate time of the hardfork (seconds since epoch)
      */
-    bool add_fork(uint8_t version, uint64_t height);
+    bool add_fork(uint8_t version, uint64_t height, time_t time);
 
     /**
      * @brief initialize the object
@@ -156,6 +161,17 @@ namespace cryptonote
     void on_block_popped(uint64_t new_chain_height);
 
     /**
+     * @brief returns current state at the given time
+     *
+     * Based on the approximate time of the last known hard fork,
+     * estimate whether we need to update, or if we're way behind
+     *
+     * @param t the time to consider
+     */
+    State get_state(time_t t) const;
+    State get_state() const;
+
+    /**
      * @brief returns the hard fork version for the given block height
      *
      * @param height height of the block to check
@@ -182,7 +198,6 @@ namespace cryptonote
      * This is the version which will we fork to next
      */
     uint8_t get_next_version() const;
-    uint8_t get_last_version() const;
 
     /**
      * @brief returns the current version
@@ -216,13 +231,6 @@ namespace cryptonote
      */
     uint64_t get_window_size() const { return window_size; }
 
-    struct Params {
-      uint8_t version;
-      uint8_t threshold;
-      uint64_t height;
-      Params(uint8_t version, uint64_t height, uint8_t threshold): version(version), threshold(threshold), height(height) {}
-    };
-
   private:
 
     uint8_t get_block_version(uint64_t height) const;
@@ -239,13 +247,15 @@ namespace cryptonote
 
     BlockchainDB &db;
 
+    time_t forked_time;
+    time_t update_time;
     uint64_t window_size;
     uint8_t default_threshold_percent;
 
     uint8_t original_version;
     uint64_t original_version_till_height;
 
-    std::vector<Params> heights;
+    std::vector<hardfork_t> heights;
 
     std::deque<uint8_t> versions; /* rolling window of the last N blocks' versions */
     unsigned int last_versions[256]; /* count of the block versions in the last N blocks */
@@ -255,3 +265,4 @@ namespace cryptonote
   };
 
 }  // namespace cryptonote
+

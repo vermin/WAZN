@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -40,11 +38,13 @@
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <chrono>
 #include <functional>
 #include <utility>
 #include <vector>
 
 #include "cryptonote_config.h"
+#include "cryptonote_protocol/fwd.h"
 #include "cryptonote_protocol/levin_notify.h"
 #include "warnings.h"
 #include "net/abstract_tcp_server2.h"
@@ -58,7 +58,6 @@
 #include "net/enums.h"
 #include "net/fwd.h"
 #include "common/command_line.h"
-#include "cryptonote_core/cryptonote_core.h"
 
 PUSH_WARNINGS
 DISABLE_VS_WARNINGS(4355)
@@ -111,11 +110,20 @@ namespace nodetool
   template<class base_type>
   struct p2p_connection_context_t: base_type //t_payload_net_handler::connection_context //public net_utils::connection_context_base
   {
-    p2p_connection_context_t(): peer_id(0), support_flags(0), m_in_timedsync(false) {}
+    p2p_connection_context_t()
+      : fluff_txs(),
+        flush_time(std::chrono::steady_clock::time_point::max()),
+        peer_id(0),
+        support_flags(0),
+        m_in_timedsync(false)
+    {}
 
+    std::vector<cryptonote::blobdata> fluff_txs;
+    std::chrono::steady_clock::time_point flush_time;
     peerid_type peer_id;
     uint32_t support_flags;
     bool m_in_timedsync;
+    std::set<epee::net_utils::network_address> sent_addresses;
   };
 
   template<class t_payload_net_handler>
@@ -131,6 +139,7 @@ namespace nodetool
 
     typedef COMMAND_HANDSHAKE_T<typename t_payload_net_handler::payload_type> COMMAND_HANDSHAKE;
     typedef COMMAND_TIMED_SYNC_T<typename t_payload_net_handler::payload_type> COMMAND_TIMED_SYNC;
+    static_assert(p2p_connection_context::handshake_command() == COMMAND_HANDSHAKE::ID, "invalid handshake command id");
 
     typedef epee::net_utils::boosted_tcp_server<epee::levin::async_protocol_handler<p2p_connection_context>> net_server;
 
@@ -141,7 +150,7 @@ namespace nodetool
     {
       config_t()
         : m_net_config(),
-          m_peer_id(crypto::rand<uint64_t>()),
+          m_peer_id(1),
           m_support_flags(0)
       {}
 
@@ -156,6 +165,7 @@ namespace nodetool
       network_zone()
         : m_connect(nullptr),
           m_net_server(epee::net_utils::e_connection_type_P2P),
+          m_seed_nodes(),
           m_bind_ip(),
           m_bind_ipv6_address(),
           m_port(),
@@ -167,7 +177,9 @@ namespace nodetool
           m_proxy_address(),
           m_current_number_of_out_peers(0),
           m_current_number_of_in_peers(0),
-          m_can_pingback(false)
+          m_seed_nodes_lock(),
+          m_can_pingback(false),
+          m_seed_nodes_initialized(false)
       {
         set_config_defaults();
       }
@@ -175,6 +187,7 @@ namespace nodetool
       network_zone(boost::asio::io_service& public_service)
         : m_connect(nullptr),
           m_net_server(public_service, epee::net_utils::e_connection_type_P2P),
+          m_seed_nodes(),
           m_bind_ip(),
           m_bind_ipv6_address(),
           m_port(),
@@ -186,13 +199,16 @@ namespace nodetool
           m_proxy_address(),
           m_current_number_of_out_peers(0),
           m_current_number_of_in_peers(0),
-          m_can_pingback(false)
+          m_seed_nodes_lock(),
+          m_can_pingback(false),
+          m_seed_nodes_initialized(false)
       {
         set_config_defaults();
       }
 
       connect_func* m_connect;
       net_server m_net_server;
+      std::vector<epee::net_utils::network_address> m_seed_nodes;
       std::string m_bind_ip;
       std::string m_bind_ipv6_address;
       std::string m_port;
@@ -204,7 +220,9 @@ namespace nodetool
       boost::asio::ip::tcp::endpoint m_proxy_address;
       std::atomic<unsigned int> m_current_number_of_out_peers;
       std::atomic<unsigned int> m_current_number_of_in_peers;
+      boost::shared_mutex m_seed_nodes_lock;
       bool m_can_pingback;
+      bool m_seed_nodes_initialized;
 
     private:
       void set_config_defaults() noexcept
@@ -234,13 +252,12 @@ namespace nodetool
       : m_payload_handler(payload_handler),
         m_external_port(0),
         m_rpc_port(0),
+        m_rpc_credits_per_hash(0),
         m_allow_local_ip(false),
         m_hide_my_port(false),
         m_igd(no_igd),
         m_offline(false),
         is_closing(false),
-        m_minimum_version(0),
-        m_min_version_override(false),
         m_network_id()
     {}
     virtual ~node_server();
@@ -271,27 +288,28 @@ namespace nodetool
     uint32_t get_max_out_public_peers() const;
     void change_max_in_public_peers(size_t count);
     uint32_t get_max_in_public_peers() const;
-    virtual bool block_host(const epee::net_utils::network_address &adress, time_t seconds = 0);
+    virtual bool block_host(epee::net_utils::network_address address, time_t seconds = P2P_IP_BLOCKTIME, bool add_only = false);
     virtual bool unblock_host(const epee::net_utils::network_address &address);
-    virtual bool block_subnet(const epee::net_utils::ipv4_network_subnet &subnet, time_t seconds = 0);
+    virtual bool block_subnet(const epee::net_utils::ipv4_network_subnet &subnet, time_t seconds = P2P_IP_BLOCKTIME);
     virtual bool unblock_subnet(const epee::net_utils::ipv4_network_subnet &subnet);
     virtual bool is_host_blocked(const epee::net_utils::network_address &address, time_t *seconds) { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return !is_remote_host_allowed(address, seconds); }
     virtual std::map<std::string, time_t> get_blocked_hosts() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_hosts; }
-    virtual bool add_peer(const std::string &address);
     virtual std::map<epee::net_utils::ipv4_network_subnet, time_t> get_blocked_subnets() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_subnets; }
 
     virtual void add_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
     virtual void remove_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
     virtual void clear_used_stripe_peers();
+
   private:
-    std::vector<std::string> m_seed_nodes_list;
+    const std::vector<std::string> m_seed_nodes_list =
+    { "seeds.moneroseeds.se"
+    , "seeds.moneroseeds.ae.org"
+    , "seeds.moneroseeds.ch"
+    , "seeds.moneroseeds.li"
+    };
 
     bool islimitup=false;
     bool islimitdown=false;
-
-#ifdef ALLOW_DEBUG_COMMANDS
-    typedef COMMAND_REQUEST_STAT_INFO_T<typename t_payload_net_handler::stat_info> COMMAND_REQUEST_STAT_INFO;
-#endif
 
     CHAIN_LEVIN_INVOKE_MAP2(p2p_connection_context); //move levin_commands_handler interface invoke(...) callbacks into invoke map
     CHAIN_LEVIN_NOTIFY_MAP2(p2p_connection_context); //move levin_commands_handler interface notify(...) callbacks into nothing
@@ -303,11 +321,6 @@ namespace nodetool
       HANDLE_INVOKE_T2(COMMAND_HANDSHAKE, &node_server::handle_handshake)
       HANDLE_INVOKE_T2(COMMAND_TIMED_SYNC, &node_server::handle_timed_sync)
       HANDLE_INVOKE_T2(COMMAND_PING, &node_server::handle_ping)
-#ifdef ALLOW_DEBUG_COMMANDS
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_STAT_INFO, &node_server::handle_get_stat_info)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_NETWORK_STATE, &node_server::handle_get_network_state)
-#endif
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_PEER_ID, &node_server::handle_get_peer_id)
       HANDLE_INVOKE_T2(COMMAND_REQUEST_SUPPORT_FLAGS, &node_server::handle_get_support_flags)
       CHAIN_INVOKE_MAP_TO_OBJ_FORCE_CONTEXT(m_payload_handler, typename t_payload_net_handler::connection_context&)
     END_INVOKE_MAP2()
@@ -318,17 +331,12 @@ namespace nodetool
     int handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context);
     int handle_timed_sync(int command, typename COMMAND_TIMED_SYNC::request& arg, typename COMMAND_TIMED_SYNC::response& rsp, p2p_connection_context& context);
     int handle_ping(int command, COMMAND_PING::request& arg, COMMAND_PING::response& rsp, p2p_connection_context& context);
-#ifdef ALLOW_DEBUG_COMMANDS
-    int handle_get_stat_info(int command, typename COMMAND_REQUEST_STAT_INFO::request& arg, typename COMMAND_REQUEST_STAT_INFO::response& rsp, p2p_connection_context& context);
-    int handle_get_network_state(int command, COMMAND_REQUEST_NETWORK_STATE::request& arg, COMMAND_REQUEST_NETWORK_STATE::response& rsp, p2p_connection_context& context);
-    bool check_trust(const proof_of_trust& tr, epee::net_utils::zone zone_type);
-#endif
-    int handle_get_peer_id(int command, COMMAND_REQUEST_PEER_ID::request& arg, COMMAND_REQUEST_PEER_ID::response& rsp, p2p_connection_context& context);
     int handle_get_support_flags(int command, COMMAND_REQUEST_SUPPORT_FLAGS::request& arg, COMMAND_REQUEST_SUPPORT_FLAGS::response& rsp, p2p_connection_context& context);
     bool init_config();
     bool make_default_peer_id();
     bool make_default_config();
     bool store_config();
+
 
     //----------------- levin_commands_handler -------------------------------------------------------------
     virtual void on_connection_new(p2p_connection_context& context);
@@ -336,7 +344,7 @@ namespace nodetool
     virtual void callback(p2p_connection_context& context);
     //----------------- i_p2p_endpoint -------------------------------------------------------------
     virtual bool relay_notify_to_list(int command, const epee::span<const uint8_t> data_buff, std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections);
-    virtual epee::net_utils::zone send_txs(std::vector<cryptonote::blobdata> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, const bool pad_txs);
+    virtual epee::net_utils::zone send_txs(std::vector<cryptonote::blobdata> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, cryptonote::relay_method tx_relay);
     virtual bool invoke_command_to_peer(int command, const epee::span<const uint8_t> req_buff, std::string& resp_buff, const epee::net_utils::connection_context_base& context);
     virtual bool invoke_notify_to_peer(int command, const epee::span<const uint8_t> req_buff, const epee::net_utils::connection_context_base& context);
     virtual bool drop_connection(const epee::net_utils::connection_context_base& context);
@@ -352,16 +360,17 @@ namespace nodetool
         const boost::program_options::variables_map& vm
       );
     bool idle_worker();
-    bool handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, time_t local_time, const epee::net_utils::connection_context_base& context);
+    bool handle_remote_peerlist(const std::vector<peerlist_entry>& peerlist, const epee::net_utils::connection_context_base& context);
     bool get_local_node_data(basic_node_data& node_data, const network_zone& zone);
+    //bool get_local_handshake_data(handshake_data& hshd);
 
     bool sanitize_peerlist(std::vector<peerlist_entry>& local_peerlist);
 
     bool connections_maker();
     bool peer_sync_idle_maker();
-    bool do_request_peer_id(peerid_type& pi, p2p_connection_context& context, bool just_take_peerlist = false);
     bool do_handshake_with_peer(peerid_type& pi, p2p_connection_context& context, bool just_take_peerlist = false);
     bool do_peer_timed_sync(const epee::net_utils::connection_context_base& context, peerid_type peer_id);
+    bool update_dns_blocklist();
 
     bool make_new_connection_from_anchor_peerlist(const std::vector<anchor_peerlist_entry>& anchor_peerlist);
     bool make_new_connection_from_peerlist(network_zone& zone, bool use_white_list);
@@ -382,10 +391,13 @@ namespace nodetool
     bool try_ping(basic_node_data& node_data, p2p_connection_context& context, const t_callback &cb);
     bool try_get_support_flags(const p2p_connection_context& context, std::function<void(p2p_connection_context&, const uint32_t&)> f);
     bool make_expected_connections_count(network_zone& zone, PeerType peer_type, size_t expected_connections);
-    void cache_connect_fail_info(const epee::net_utils::network_address& addr);
+    void record_addr_failed(const epee::net_utils::network_address& addr);
     bool is_addr_recently_failed(const epee::net_utils::network_address& addr);
     bool is_priority_node(const epee::net_utils::network_address& na);
-    bool connect_to_seed();
+    std::set<std::string> get_ip_seed_nodes() const;
+    std::set<std::string> get_dns_seed_nodes();
+    std::set<std::string> get_seed_nodes(epee::net_utils::zone);
+    bool connect_to_seed(epee::net_utils::zone);
 
     template <class Container>
     bool connect_to_peerlist(const Container& peers);
@@ -402,7 +414,6 @@ namespace nodetool
     bool set_rate_limit(const boost::program_options::variables_map& vm, int64_t limit);
 
     bool has_too_many_connections(const epee::net_utils::network_address &address);
-    uint64_t get_connections_count();
     size_t get_incoming_connections_count();
     size_t get_incoming_connections_count(network_zone&);
     size_t get_outgoing_connections_count();
@@ -423,11 +434,17 @@ namespace nodetool
     //debug functions
     std::string print_connections_container();
 
+
   public:
 
     void set_rpc_port(uint16_t rpc_port)
     {
       m_rpc_port = rpc_port;
+    }
+
+    void set_rpc_credits_per_hash(uint32_t rpc_credits_per_hash)
+    {
+      m_rpc_credits_per_hash = rpc_credits_per_hash;
     }
 
   private:
@@ -439,16 +456,17 @@ namespace nodetool
     uint32_t m_listening_port_ipv6;
     uint32_t m_external_port;
     uint16_t m_rpc_port;
+    uint32_t m_rpc_credits_per_hash;
     bool m_allow_local_ip;
     bool m_hide_my_port;
     igd_t m_igd;
     bool m_offline;
     bool m_use_ipv6;
     bool m_require_ipv4;
-    uint32_t m_minimum_version;
-    bool m_min_version_override;
     std::atomic<bool> is_closing;
     std::unique_ptr<boost::thread> mPeersLoggerThread;
+    //critical_section m_connections_lock;
+    //connections_indexed_container m_connections;
 
     t_payload_net_handler& m_payload_handler;
     peerlist_storage m_peerlist_storage;
@@ -458,19 +476,19 @@ namespace nodetool
     epee::math_helper::once_a_time_seconds<60*30, false> m_peerlist_store_interval;
     epee::math_helper::once_a_time_seconds<60> m_gray_peerlist_housekeeping_interval;
     epee::math_helper::once_a_time_seconds<3600, false> m_incoming_connections_interval;
+    epee::math_helper::once_a_time_seconds<7000> m_dns_blocklist_interval;
 
-#ifdef ALLOW_DEBUG_COMMANDS
-    uint64_t m_last_stat_request_time;
-#endif
     std::list<epee::net_utils::network_address>   m_priority_peers;
     std::vector<epee::net_utils::network_address> m_exclusive_peers;
-    std::vector<epee::net_utils::network_address> m_seed_nodes;
+    std::atomic_flag m_fallback_seed_nodes_added;
     std::vector<nodetool::peerlist_entry> m_command_line_peers;
     uint64_t m_peer_livetime;
     //keep connections to initiate some interactions
 
+
     static boost::optional<p2p_connection_context> public_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
     static boost::optional<p2p_connection_context> socks_connect(network_zone&, epee::net_utils::network_address const&, epee::net_utils::ssl_support_t);
+
 
     /* A `std::map` provides constant iterators and key/value pointers even with
     inserts/erases to _other_ elements. This makes the configuration step easier
@@ -479,10 +497,11 @@ namespace nodetool
     added. `std::map::operator[]` WILL insert! */
     std::map<epee::net_utils::zone, network_zone> m_network_zones;
 
+
     std::map<std::string, time_t> m_conn_fails_cache;
     epee::critical_section m_conn_fails_cache_lock;
 
-    epee::critical_section m_blocked_hosts_lock;
+    epee::critical_section m_blocked_hosts_lock; // for both hosts and subnets
     std::map<std::string, time_t> m_blocked_hosts;
     std::map<epee::net_utils::ipv4_network_subnet, time_t> m_blocked_subnets;
 
@@ -494,7 +513,10 @@ namespace nodetool
 
     boost::uuids::uuid m_network_id;
     cryptonote::network_type m_nettype;
+
     epee::net_utils::ssl_support_t m_ssl_support;
+
+    bool m_enable_dns_blocklist;
   };
 
     const int64_t default_limit_up = P2P_DEFAULT_LIMIT_RATE_UP;      // kB/s
@@ -513,8 +535,10 @@ namespace nodetool
     extern const command_line::arg_descriptor<std::vector<std::string> > arg_p2p_seed_node;
     extern const command_line::arg_descriptor<std::vector<std::string> > arg_tx_proxy;
     extern const command_line::arg_descriptor<std::vector<std::string> > arg_anonymous_inbound;
+    extern const command_line::arg_descriptor<std::string> arg_ban_list;
     extern const command_line::arg_descriptor<bool> arg_p2p_hide_my_port;
     extern const command_line::arg_descriptor<bool> arg_no_sync;
+    extern const command_line::arg_descriptor<bool> arg_enable_dns_blocklist;
 
     extern const command_line::arg_descriptor<bool>        arg_no_igd;
     extern const command_line::arg_descriptor<std::string> arg_igd;
@@ -526,8 +550,8 @@ namespace nodetool
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate_up;
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate_down;
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
-
-    extern const command_line::arg_descriptor<std::string> arg_min_ver;
+    extern const command_line::arg_descriptor<bool> arg_pad_transactions;
 }
 
 POP_WARNINGS
+

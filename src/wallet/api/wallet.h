@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -44,6 +44,7 @@ namespace Monero {
 class TransactionHistoryImpl;
 class PendingTransactionImpl;
 class UnsignedTransactionImpl;
+class AddressBookImpl;
 class SubaddressImpl;
 class SubaddressAccountImpl;
 struct Wallet2CallbackImpl;
@@ -98,14 +99,16 @@ public:
     std::string publicSpendKey() const override;
     std::string publicMultisigSignerKey() const override;
     std::string path() const override;
+    void stop() override;
     bool store(const std::string &path) override;
     std::string filename() const override;
     std::string keysFilename() const override;
-    bool init(const std::string &daemon_address, uint64_t upper_transaction_size_limit = 0, const std::string &daemon_username = "", const std::string &daemon_password = "", bool use_ssl = false, bool lightWallet = false) override;
+    bool init(const std::string &daemon_address, uint64_t upper_transaction_size_limit = 0, const std::string &daemon_username = "", const std::string &daemon_password = "", bool use_ssl = false, bool lightWallet = false, const std::string &proxy_address = "") override;
     bool connectToDaemon() override;
     ConnectionStatus connected() const override;
     void setTrustedDaemon(bool arg) override;
     bool trustedDaemon() const override;
+    bool setProxy(const std::string &address) override;
     uint64_t balance(uint32_t accountIndex = 0) const override;
     uint64_t unlockedBalance(uint32_t accountIndex = 0) const override;
     uint64_t blockChainHeight() const override;
@@ -149,12 +152,12 @@ public:
     PendingTransaction*  restoreMultisigTransaction(const std::string& signData) override;
 
     PendingTransaction * createTransactionMultDest(const std::vector<std::string> &dst_addr, const std::string &payment_id,
-                                        optional<std::vector<uint64_t>> amount,
+                                        optional<std::vector<uint64_t>> amount, uint32_t mixin_count,
                                         PendingTransaction::Priority priority = PendingTransaction::Priority_Low,
                                         uint32_t subaddr_account = 0,
                                         std::set<uint32_t> subaddr_indices = {}) override;
     PendingTransaction * createTransaction(const std::string &dst_addr, const std::string &payment_id,
-                                        optional<uint64_t> amount,
+                                        optional<uint64_t> amount, uint32_t mixin_count,
                                         PendingTransaction::Priority priority = PendingTransaction::Priority_Low,
                                         uint32_t subaddr_account = 0,
                                         std::set<uint32_t> subaddr_indices = {}) override;
@@ -165,11 +168,15 @@ public:
     bool importKeyImages(const std::string &filename) override;
 
     virtual void disposeTransaction(PendingTransaction * t) override;
-
+    virtual uint64_t estimateTransactionFee(const std::vector<std::pair<std::string, uint64_t>> &destinations,
+                                            PendingTransaction::Priority priority) const override;
     virtual TransactionHistory * history() override;
+    virtual AddressBook * addressBook() override;
     virtual Subaddress * subaddress() override;
     virtual SubaddressAccount * subaddressAccount() override;
     virtual void setListener(WalletListener * l) override;
+    virtual uint32_t defaultMixin() const override;
+    virtual void setDefaultMixin(uint32_t arg) override;
 
     virtual bool setCacheAttribute(const std::string &key, const std::string &val) override;
     virtual std::string getCacheAttribute(const std::string &key) const override;
@@ -220,13 +227,14 @@ private:
     void stopRefresh();
     bool isNewWallet() const;
     void pendingTxPostProcess(PendingTransactionImpl * pending);
-    bool doInit(const std::string &daemon_address, uint64_t upper_transaction_size_limit = 0, bool ssl = false);
+    bool doInit(const std::string &daemon_address, const std::string &proxy_address, uint64_t upper_transaction_size_limit = 0, bool ssl = false);
 
 private:
     friend class PendingTransactionImpl;
     friend class UnsignedTransactionImpl;    
     friend class TransactionHistoryImpl;
     friend struct Wallet2CallbackImpl;
+    friend class AddressBookImpl;
     friend class SubaddressImpl;
     friend class SubaddressAccountImpl;
 
@@ -237,6 +245,7 @@ private:
     std::string m_password;
     std::unique_ptr<TransactionHistoryImpl> m_history;
     std::unique_ptr<Wallet2CallbackImpl> m_wallet2Callback;
+    std::unique_ptr<AddressBookImpl>  m_addressBook;
     std::unique_ptr<SubaddressImpl>  m_subaddress;
     std::unique_ptr<SubaddressAccountImpl>  m_subaddressAccount;
 

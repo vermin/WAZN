@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -47,12 +47,14 @@ public:
     std::string errorString() const override;
     std::vector<uint64_t> amount() const override;
     std::vector<uint64_t> fee() const override;
+    std::vector<uint64_t> mixin() const override;
     std::vector<std::string> paymentId() const override;
     std::vector<std::string> recipientAddress() const override;
     uint64_t txCount() const override;
     // sign txs and save to file
     bool sign(const std::string &signedFileName) override;
     std::string confirmationMessage() const override {return m_confirmationMessage;}
+    uint64_t minMixinCount() const override;
 
 private:
     // Callback function to check all loaded tx's and generate confirmationMessage

@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -47,8 +45,6 @@
 #include "rpc/rpc_args.h"
 #include "daemon/command_line_args.h"
 #include "version.h"
-#include "common/wazn_https.h"
-#include "common/dns_config.h"
 
 #ifdef STACK_TRACE
 #include "common/stack_trace.h"
@@ -70,10 +66,12 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
   }
 
   std::string rpc_port_str;
+  std::string rpc_bind_address = command_line::get_arg(vm, cryptonote::rpc_args::descriptors().rpc_bind_ip);
   const auto &restricted_rpc_port = cryptonote::core_rpc_server::arg_rpc_restricted_bind_port;
   if (!command_line::is_arg_defaulted(vm, restricted_rpc_port))
   {
-    rpc_port_str = command_line::get_arg(vm, restricted_rpc_port);;
+    rpc_port_str = command_line::get_arg(vm, restricted_rpc_port);
+    rpc_bind_address = command_line::get_arg(vm, cryptonote::rpc_args::descriptors().rpc_restricted_bind_ip);
   }
   else if (command_line::get_arg(vm, cryptonote::core_rpc_server::arg_restricted_rpc))
   {
@@ -90,7 +88,6 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
     throw std::runtime_error("invalid RPC port " + rpc_port_str);
   }
 
-  const auto rpc_bind_address = command_line::get_arg(vm, cryptonote::rpc_args::descriptors().rpc_bind_ip);
   const auto address = net::get_network_address(rpc_bind_address, rpc_port);
   if (!address) {
     throw std::runtime_error("failed to parse RPC bind address");
@@ -103,13 +100,27 @@ uint16_t parse_public_rpc_port(const po::variables_map &vm)
 
   if (address->is_loopback() || address->is_local())
   {
-    MLOG_RED(el::Level::Warning, "--" << public_node_arg.name
-      << " is enabled, but RPC server " << address->str()
+    MLOG_RED(el::Level::Warning, "--" << public_node_arg.name 
+      << " is enabled, but RPC server " << address->str() 
       << " may be unreachable from outside, please check RPC server bind address");
   }
 
   return rpc_port;
 }
+
+#ifdef WIN32
+bool isFat32(const wchar_t* root_path)
+{
+  std::vector<wchar_t> fs(MAX_PATH + 1);
+  if (!::GetVolumeInformationW(root_path, nullptr, 0, nullptr, 0, nullptr, &fs[0], MAX_PATH))
+  {
+    MERROR("Failed to get '" << root_path << "' filesystem name. Error code: " << ::GetLastError());
+    return false;
+  }
+
+  return wcscmp(L"FAT32", &fs[0]) == 0;
+}
+#endif
 
 int main(int argc, char const * argv[])
 {
@@ -136,7 +147,6 @@ int main(int argc, char const * argv[])
       command_line::add_arg(visible_options, daemon_args::arg_config_file);
 
       // Settings
-      command_line::add_arg(core_settings, daemon_args::arg_noanalytics);
       command_line::add_arg(core_settings, daemon_args::arg_log_file);
       command_line::add_arg(core_settings, daemon_args::arg_log_level);
       command_line::add_arg(core_settings, daemon_args::arg_max_log_file_size);
@@ -145,6 +155,7 @@ int main(int argc, char const * argv[])
       command_line::add_arg(core_settings, daemon_args::arg_public_node);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_ip);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_bind_port);
+      command_line::add_arg(core_settings, daemon_args::arg_zmq_pub);
       command_line::add_arg(core_settings, daemon_args::arg_zmq_rpc_disabled);
 
       daemonizer::init_options(hidden_options, visible_options);
@@ -152,7 +163,6 @@ int main(int argc, char const * argv[])
 
       // Hidden options
       command_line::add_arg(hidden_options, daemon_args::arg_command);
-      command_line::add_arg(hidden_options, daemon_args::arg_create_genesis_tx);
 
       visible_options.add(core_settings);
       all_options.add(visible_options);
@@ -178,7 +188,7 @@ int main(int argc, char const * argv[])
 
     if (command_line::get_arg(vm, command_line::arg_help))
     {
-      std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+      std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
       std::cout << "Usage: " + std::string{argv[0]} + " [options|settings] [daemon_command...]" << std::endl << std::endl;
       std::cout << visible_options << std::endl;
       return 0;
@@ -187,7 +197,7 @@ int main(int argc, char const * argv[])
     // Monero Version
     if (command_line::get_arg(vm, command_line::arg_version))
     {
-      std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL;
+      std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL;
       return 0;
     }
 
@@ -219,39 +229,14 @@ int main(int argc, char const * argv[])
       std::cerr << "Can't find config file " << config << std::endl;
       return 1;
     }
+
     const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
     const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
-    const bool noanalytics = command_line::get_arg(vm, daemon_args::arg_noanalytics);
-
-    if (testnet && stagenet)
+    const bool regtest = command_line::get_arg(vm, cryptonote::arg_regtest_on);
+    if (testnet + stagenet + regtest > 1)
     {
-      std::cerr << "Can't specify more than one of --testnet and --stagenet" << ENDL;
+      std::cerr << "Can't specify more than one of --tesnet and --stagenet and --regtest" << ENDL;
       return 1;
-    }
-
-    uint64_t gb = command_line::get_arg(vm, daemon_args::arg_create_genesis_tx);
-
-    if (gb)
-    {
-      cryptonote::transaction tx;
-
-      if (construct_genesis_tx(tx, gb))
-      {
-        std::stringstream ss;
-        binary_archive<true> ba(ss);
-        std::string tx_hex = string_tools::buff_to_hex_nodelimer(tx_to_blob(tx));
-        bool r = do_serialize(ba, tx);
-        if (r)
-        {
-          MGUSER_YELLOW(ENDL << "New Genesis TX:" << ENDL << tx_hex);
-          return 1;
-        }
-      }
-      else
-      {
-        MGUSER_RED("Could not create genesis TX");
-        return 1;
-      }
     }
 
     // data_dir
@@ -263,6 +248,13 @@ int main(int argc, char const * argv[])
     // Create data dir if it doesn't exist
     boost::filesystem::path data_dir = boost::filesystem::absolute(
         command_line::get_arg(vm, cryptonote::arg_data_dir));
+
+#ifdef WIN32
+    if (isFat32(data_dir.root_path().c_str()))
+    {
+      MERROR("Data directory resides on FAT32 volume that has 4GiB file size limit, blockchain might get corrupted.");
+    }
+#endif
 
     // FIXME: not sure on windows implementation default, needs further review
     //bf::path relative_path_base = daemonizer::get_relative_path_base(vm);
@@ -299,7 +291,8 @@ int main(int argc, char const * argv[])
       tools::set_max_concurrency(command_line::get_arg(vm, daemon_args::arg_max_concurrency));
 
     // logging is now set up
-    MGINFO("WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
+    MGINFO("Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")");
+
     // If there are positional options, we're running a daemon command
     {
       auto command = command_line::get_arg(vm, daemon_args::arg_command);
@@ -359,22 +352,6 @@ int main(int argc, char const * argv[])
         }
       }
     }
-
-    if (!tools::check_aesni())
-      return 1;
-
-    dns_config::init(testnet);
-
-    if (noanalytics)
-      MGINFO("Analytics disabled.");
-    else
-      MGINFO("Analytics enabled.");
-
-    analytics::enable(!noanalytics);
-
-    blacklist::read_blacklist_from_url(testnet);
-    if (blacklist::get_ip_list().size() > 0)
-      MGINFO("Blacklist loaded: " << blacklist::get_ip_list().size() << " items");
 
     MINFO("Moving from main() into the daemonize now.");
 

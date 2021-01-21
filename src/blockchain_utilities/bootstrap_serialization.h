@@ -1,5 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -89,7 +88,7 @@ namespace cryptonote
       cryptonote::block block;
       std::vector<transaction> txs;
       size_t block_weight;
-      difficulty_type_128 cumulative_difficulty;
+      difficulty_type cumulative_difficulty;
       uint64_t coins_generated;
 
       BEGIN_SERIALIZE()

@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -62,7 +60,6 @@
 #include <boost/spirit/include/qi_string.hpp>
 #include <boost/spirit/include/qi_symbols.hpp>
 #include <boost/spirit/include/qi_uint.hpp>
-#include <openssl/crypto.h>
 #include <cassert>
 #include <iterator>
 #include <limits>
@@ -96,10 +93,8 @@ namespace
 
   constexpr const auto client_auth_field = ceref(u8"Authorization");
   constexpr const auto server_auth_field = ceref(u8"WWW-authenticate");
-  constexpr const auto auth_realm = ceref(u8"wazn-rpc");
-  constexpr const char space = 32;
+  constexpr const auto auth_realm = ceref(u8"monero-rpc");
   constexpr const char comma = 44;
-  constexpr const char colon = 58;
   constexpr const char equal_sign = 61;
   constexpr const char quote = 34;
   constexpr const char zero = 48;
@@ -143,7 +138,7 @@ namespace
 
     template<typename... T>
     std::array<char, 32> operator()(const T&... args) const
-    {
+    {      
       md5::MD5_CTX ctx{};
       md5::MD5Init(std::addressof(ctx));
       boost::fusion::for_each(std::tie(args...), update{ctx});
@@ -196,26 +191,6 @@ namespace
   std::string to_string(boost::iterator_range<const char*> source)
   {
     return {source.begin(), source.size()};
-  }
-
-  void lstrip_space(boost::string_ref& s)
-  {
-    while (s.starts_with(space))
-    {
-      s.remove_prefix(1);
-    }
-  }
-
-  bool read_token(boost::string_ref& s, boost::string_ref& token)
-  {
-    lstrip_space(s);
-    size_t token_len = 0;
-    for (const size_t len = s.length(); token_len < len && s.at(token_len) != space; token_len++);
-    if (token_len == 0)
-      return false;
-    token = s.substr(0, token_len);
-    s.remove_prefix(token_len);
-    return true;
   }
 
   template<typename T>
@@ -348,7 +323,7 @@ namespace
 
     //! \return Status of the `response` field from the client
     static status verify(const boost::string_ref method, const boost::string_ref request,
-      const http::http_server_auth_digest::session& user)
+      const http::http_server_auth::session& user)
     {
       const auto parsed = parse(request);
       if (parsed &&
@@ -496,9 +471,9 @@ namespace
         }
 
         boost::optional<auth_message> operator()(const boost::string_ref request) const
-        {
+        { 
           namespace qi = boost::spirit::qi;
-
+           
           iterator current = request.begin();
           const iterator end = request.end();
 
@@ -585,7 +560,7 @@ namespace
       }
 
       const auth_message& request;
-      const http::http_server_auth_digest::session& user;
+      const http::http_server_auth::session& user;
       const boost::string_ref method;
     };
 
@@ -609,8 +584,8 @@ namespace
       explicit server_parameters(const auth_message& request, const DigestIter& digest)
         : nonce(request.nonce)
         , opaque(request.opaque)
-        , stale(request.stale)
         , realm(request.realm)
+        , stale(request.stale)
         , value_generator()
         , index(boost::fusion::distance(boost::fusion::begin(digest_algorithms), digest))
       {
@@ -681,7 +656,7 @@ namespace
     boost::iterator_range<iterator> response;
     boost::iterator_range<iterator> stale;
     boost::iterator_range<iterator> uri;
-    boost::iterator_range<iterator> username;
+    boost::iterator_range<iterator> username; 
   }; // auth_message
 
   struct add_challenge
@@ -702,7 +677,7 @@ namespace
         add_field(out, u8"realm", quoted(auth_realm));
         add_field(out, u8"nonce", quoted(nonce));
         add_field(out, u8"stale", is_stale ? ceref("true") : ceref("false"));
-
+        
         fields.push_back(std::make_pair(std::string(server_auth_field), std::move(out)));
       }
     }
@@ -718,49 +693,14 @@ namespace
     rc.m_response_code = 401;
     rc.m_response_comment = u8"Unauthorized";
     rc.m_mime_tipe = u8"text/html";
-    rc.m_body =
+    rc.m_body = 
       u8"<html><head><title>Unauthorized Access</title></head><body><h1>401 Unauthorized</h1></body></html>";
 
     boost::fusion::for_each(
       digest_algorithms, add_challenge{nonce, rc.m_additional_fields, is_stale}
     );
-
+    
     return rc;
-  }
-
-  http::http_response_info create_basic_response()
-  {
-    epee::net_utils::http::http_response_info rc{};
-    rc.m_response_code = 401;
-    rc.m_response_comment = u8"Unauthorized";
-    rc.m_mime_tipe = u8"text/html";
-    rc.m_body =
-      u8"<html><head><title>Unauthorized Access</title></head><body><h1>401 Unauthorized</h1></body></html>";
-
-    static constexpr const auto fvalue = ceref(u8"Basic ");
-    std::string out(fvalue);
-    add_first_field(out, u8"realm", quoted(auth_realm));
-    rc.m_additional_fields.push_back(std::make_pair(std::string(server_auth_field), std::move(out)));
-
-    return rc;
-  }
-
-  bool parse_basic_header(const std::string& header, epee::wipeable_string& credentials)
-  {
-    boost::string_ref unparsed = boost::string_ref(header);
-    boost::string_ref token;
-    if (!read_token(unparsed, token))
-      return false;
-    static constexpr const auto scheme = ceref(u8"Basic");
-    if (!boost::equals(token, scheme, ascii_iequal))
-      return false;
-    if (!read_token(unparsed, token))
-      return false;
-    credentials = epee::wipeable_string(std::move(token.to_string()));
-    // Check for unexpected trailing token
-    if (read_token(unparsed, token))
-      return false;
-    return true;
   }
 }
 
@@ -770,11 +710,11 @@ namespace epee
   {
     namespace http
     {
-      http_server_auth_digest::http_server_auth_digest(login credentials, std::function<void(size_t, uint8_t*)> r)
+      http_server_auth::http_server_auth(login credentials, std::function<void(size_t, uint8_t*)> r)
         : user(session{std::move(credentials)}), rng(std::move(r)) {
       }
 
-      boost::optional<http_response_info> http_server_auth_digest::do_get_response(const http_request_info& request)
+      boost::optional<http_response_info> http_server_auth::do_get_response(const http_request_info& request)
       {
         assert(user);
         using field = std::pair<std::string, std::string>;
@@ -811,59 +751,6 @@ namespace epee
         return create_digest_response(user->nonce, is_stale);
       }
 
-
-      http_server_auth_basic::http_server_auth_basic(login credentials)
-      {
-        epee::wipeable_string credentials_str;
-        credentials_str.reserve(credentials.username.length() + credentials.password.length() + 1);
-        credentials_str += credentials.username;
-        credentials_str.push_back(colon);
-        credentials_str += credentials.password;
-        encoded_credentials = epee::wipeable_string(std::move(epee::string_encoding::base64_encode(
-          (const unsigned char*)credentials_str.data(), credentials_str.length())));
-        // Pad the encoded string to make it difficult to determine the
-        // length of the actual credentials via a timing attack (if the
-        // encoded credentials are longer than 512 bytes, it's highly
-        // improbable an attacker will ever brute-force them, even
-        // assuming their length is known).
-        for (size_t len = encoded_credentials.size(); len < 512; len++)
-        {
-          encoded_credentials.push_back('\0');
-        }
-      }
-
-      boost::optional<http_response_info> http_server_auth_basic::get_response(const http_request_info& request)
-      {
-        using field = std::pair<std::string, std::string>;
-
-        const std::list<field>& fields = request.m_header_info.m_etc_fields;
-        const auto auth = boost::find_if(fields, [] (const field& value) {
-          return boost::equals(client_auth_field, value.first, ascii_iequal);
-        });
-
-        if (auth != fields.end())
-        {
-          epee::wipeable_string req_credentials;
-          if (parse_basic_header(auth->second, req_credentials))
-          {
-            // Pad the input credentials to match the length of the padded
-            // expected credentials. This approach should not leak length
-            // information to timing attacks, unless the unpadded expected
-            // credentials string is extremely long, at which point an
-            // attack on known-length credentials should be infeasible.
-            const size_t cmp_len = encoded_credentials.size();
-            for (size_t l = req_credentials.size(); l < cmp_len; l++)
-            {
-              req_credentials.push_back('\0');
-            }
-            if (CRYPTO_memcmp(encoded_credentials.data(), req_credentials.data(), cmp_len) == 0)
-              return boost::none;
-          }
-        }
-        return create_basic_response();
-      }
-
-
       http_client_auth::http_client_auth(login credentials)
         : user(session{std::move(credentials)}) {
       }
@@ -895,3 +782,4 @@ namespace epee
     }
   }
 }
+

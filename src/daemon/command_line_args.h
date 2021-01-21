@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -37,7 +35,7 @@
 
 namespace daemon_args
 {
-  std::string const WINDOWS_SERVICE_NAME = "WAZN Daemon";
+  std::string const WINDOWS_SERVICE_NAME = "Monero Daemon";
 
   const command_line::arg_descriptor<std::string, false, true, 2> arg_config_file = {
     "config-file"
@@ -88,11 +86,6 @@ namespace daemon_args
     "daemon_command"
   , "Hidden"
   };
-  const command_line::arg_descriptor<std::uint64_t> arg_create_genesis_tx = {
-    "create-genesis-tx"
-  , "You shouldn't need help"
-  , 0
-  };
   const command_line::arg_descriptor<bool> arg_os_version = {
     "os-version"
   , "OS for which this executable was compiled"
@@ -128,16 +121,14 @@ namespace daemon_args
       return val;
     }
   };
+  const command_line::arg_descriptor<std::vector<std::string>> arg_zmq_pub = {
+    "zmq-pub"
+  , "Address for ZMQ pub - tcp://ip:port or ipc://path"
+  };
 
   const command_line::arg_descriptor<bool> arg_zmq_rpc_disabled = {
     "no-zmq"
   , "Disable ZMQ RPC server"
-  };
-
-  const command_line::arg_descriptor<bool> arg_noanalytics = {
-    "no-analytics"
-  , "Do not submit any information to the node map"
-  , false
   };
 
 }  // namespace daemon_args

@@ -1,23 +1,21 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -58,6 +56,12 @@ t_command_server::t_command_server(
     , std::bind(&t_command_server::help, this, p::_1)
     , "help [<command>]"
     , "Show the help section or the documentation about a <command>."
+    );
+  m_command_lookup.set_handler(
+      "apropos"
+    , std::bind(&t_command_server::apropos, this, p::_1)
+    , "apropos <keyword> [<keyword> ...]"
+    , "Search all command descriptions for keyword(s)."
     );
   m_command_lookup.set_handler(
       "print_height"
@@ -114,12 +118,6 @@ t_command_server::t_command_server(
     , std::bind(&t_command_parser_executor::start_mining, &m_parser, p::_1)
     , "start_mining <addr> [<threads>|auto] [do_background_mining] [ignore_battery]"
     , "Start mining for specified address. Defaults to 1 thread and no background mining. Use \"auto\" to autodetect optimal number of threads."
-    );
-  m_command_lookup.set_handler(
-      "donate_level"
-    , std::bind(&t_command_parser_executor::donate_mining, &m_parser, p::_1)
-    , "donate_level <blocks>"
-    , "Amount of time to spend mining to the donation fund."
     );
   m_command_lookup.set_handler(
       "stop_mining"
@@ -235,8 +233,8 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "ban"
     , std::bind(&t_command_parser_executor::ban, &m_parser, p::_1)
-    , "ban <IP> [<seconds>]"
-    , "Ban a given <IP> for a given amount of <seconds>."
+    , "ban [<IP>|@<filename>] [<seconds>]"
+    , "Ban a given <IP> or list of IPs from a file for a given amount of <seconds>."
     );
     m_command_lookup.set_handler(
       "unban"
@@ -269,24 +267,6 @@ t_command_server::t_command_server(
     , "Print the sum of coinbase transactions."
     );
     m_command_lookup.set_handler(
-      "print_generated_coins"
-    , std::bind(&t_command_parser_executor::print_generated_coins, &m_parser, p::_1)
-    , "print_generated_coins"
-    , "Print the sum of coinbase transactions."
-    );
-    m_command_lookup.set_handler(
-      "min_version"
-    , std::bind(&t_command_parser_executor::min_version, &m_parser, p::_1)
-    , "min_version"
-    , "Show the minimum software version supported by this node."
-    );
-    m_command_lookup.set_handler(
-      "print_tx_pubkey"
-    , std::bind(&t_command_parser_executor::print_tx_pubkey, &m_parser, p::_1)
-    , "print_tx_pubkey"
-    , "Print the TX public key from the TX extra."
-    );
-    m_command_lookup.set_handler(
       "alt_chain_info"
     , std::bind(&t_command_parser_executor::alt_chain_info, &m_parser, p::_1)
     , "alt_chain_info [blockhash]"
@@ -299,9 +279,10 @@ t_command_server::t_command_server(
     , "Print the information about current blockchain dynamic state."
     );
     m_command_lookup.set_handler(
-      "check_update"
+      "update"
     , std::bind(&t_command_parser_executor::update, &m_parser, p::_1)
-    , "Check if an update is available."
+    , "update (check|download)"
+    , "Check if an update is available, optionally downloads it if there is. Updating is not yet implemented."
     );
     m_command_lookup.set_handler(
       "relay_tx"
@@ -319,6 +300,11 @@ t_command_server::t_command_server(
     , std::bind(&t_command_parser_executor::pop_blocks, &m_parser, p::_1)
     , "pop_blocks <nblocks>"
     , "Remove blocks from end of blockchain"
+    );
+    m_command_lookup.set_handler(
+      "rpc_payments"
+    , std::bind(&t_command_parser_executor::rpc_payments, &m_parser, p::_1)
+    , "Print information about RPC payments."
     );
     m_command_lookup.set_handler(
       "version"
@@ -345,7 +331,7 @@ t_command_server::t_command_server(
     m_command_lookup.set_handler(
       "flush_cache"
     , std::bind(&t_command_parser_executor::flush_cache, &m_parser, p::_1)
-    , "flush_cache bad-txs"
+    , "flush_cache [bad-txs] [bad-blocks]"
     , "Flush the specified cache(s)."
     );
 }
@@ -369,7 +355,7 @@ bool t_command_server::start_handling(std::function<void(void)> exit_handler)
 {
   if (m_is_rpc) return false;
 
-  m_command_lookup.start_handling("", get_commands_str(), exit_handler);
+  m_command_lookup.start_handling("", "Use \"help\" to list all commands and their usage\n", exit_handler);
 
   return true;
 }
@@ -394,15 +380,42 @@ bool t_command_server::help(const std::vector<std::string>& args)
   return true;
 }
 
+bool t_command_server::apropos(const std::vector<std::string>& args)
+{
+  if (args.empty())
+  {
+    std::cout << "Missing keyword" << std::endl;
+    return true;
+  }
+  const std::vector<std::string>& command_list = m_command_lookup.get_command_list(args);
+  if (command_list.empty())
+  {
+    std::cout << "Nothing found" << std::endl;
+    return true;
+  }
+
+  std::cout << std::endl;
+  for(auto const& command:command_list)
+  {
+    std::vector<std::string> cmd;
+    cmd.push_back(command);
+    std::pair<std::string, std::string> documentation = m_command_lookup.get_documentation(cmd);
+    std::cout << "  " << documentation.first << std::endl;
+  }
+  std::cout << std::endl;
+
+  return true;
+}
+
 std::string t_command_server::get_commands_str()
 {
   std::stringstream ss;
-  ss << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << std::endl;
+  ss << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << std::endl;
   ss << "Commands: " << std::endl;
   std::string usage = m_command_lookup.get_usage();
   boost::replace_all(usage, "\n", "\n  ");
   usage.insert(0, "  ");
-  ss << usage << std::endl;
+  ss << usage;
   return ss.str();
 }
 

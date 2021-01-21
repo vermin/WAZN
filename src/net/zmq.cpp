@@ -1,4 +1,4 @@
-// Copyright (c) 2019, The Monero Project
+// Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -32,6 +32,8 @@
 #include <cerrno>
 #include <limits>
 #include <utility>
+
+#include "byte_slice.h"
 
 namespace net
 {
@@ -156,20 +158,6 @@ namespace zmq
                 return unsigned(max_out) < added ? max_out : int(added);
             }
         };
-
-        template<typename F, typename... T>
-        expect<void> retry_op(F op, T&&... args) noexcept(noexcept(op(args...)))
-        {
-            for (;;)
-            {
-                if (0 <= op(args...))
-                    return success();
-
-                const int error = zmq_errno();
-                if (error != EINTR)
-                    return make_error_code(error);
-            }
-        }
     } // anonymous
 
     expect<std::string> receive(void* const socket, const int flags)
@@ -182,6 +170,22 @@ namespace zmq
     expect<void> send(const epee::span<const std::uint8_t> payload, void* const socket, const int flags) noexcept
     {
         return retry_op(zmq_send, socket, payload.data(), payload.size(), flags);
+    }
+
+    expect<void> send(epee::byte_slice&& payload, void* socket, int flags) noexcept
+    {
+        void* const data = const_cast<std::uint8_t*>(payload.data());
+        const std::size_t size = payload.size();
+        auto buffer = payload.take_buffer(); // clears `payload` from callee
+
+        zmq_msg_t msg{};
+        MONERO_ZMQ_CHECK(zmq_msg_init_data(std::addressof(msg), data, size, epee::release_byte_slice::call, buffer.get()));
+        buffer.release(); // zmq will now decrement byte_slice ref-count
+
+        expect<void> sent = retry_op(zmq_msg_send, std::addressof(msg), socket, flags);
+        if (!sent) // beware if removing `noexcept` from this function - possible leak here
+            zmq_msg_close(std::addressof(msg));
+        return sent;
     }
 } // zmq
 } // net

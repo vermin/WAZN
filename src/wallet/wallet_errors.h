@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -90,6 +90,7 @@ namespace tools
     //         is_key_image_spent_error
     //         get_histogram_error
     //         get_output_distribution
+    //         payment_required
     //       wallet_files_doesnt_correspond
     //
     // * - class with protected ctor
@@ -831,6 +832,14 @@ namespace tools
     {
       explicit get_output_distribution(std::string&& loc, const std::string& request)
         : wallet_rpc_error(std::move(loc), "failed to get output distribution", request)
+      {
+      }
+    };
+    //----------------------------------------------------------------------------------------------------
+    struct payment_required: public wallet_rpc_error
+    {
+      explicit payment_required(std::string&& loc, const std::string& request)
+        : wallet_rpc_error(std::move(loc), "payment required", request)
       {
       }
     };

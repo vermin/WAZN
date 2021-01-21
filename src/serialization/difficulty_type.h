@@ -1,21 +1,21 @@
-// Copyright (c) 2019, The Monero Project
-//
+// Copyright (c) 2019-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -31,10 +31,10 @@
 #include "cryptonote_basic/difficulty.h"
 #include "serialization.h"
 
-template<> struct is_basic_type<cryptonote::difficulty_type_128> { typedef boost::true_type type; };
+template<> struct is_basic_type<cryptonote::difficulty_type> { typedef boost::true_type type; };
 
 template <template <bool> class Archive>
-inline bool do_serialize(Archive<false>& ar, cryptonote::difficulty_type_128 &diff)
+inline bool do_serialize(Archive<false>& ar, cryptonote::difficulty_type &diff)
 {
   uint64_t hi, lo;
   ar.serialize_varint(hi);
@@ -50,7 +50,7 @@ inline bool do_serialize(Archive<false>& ar, cryptonote::difficulty_type_128 &di
 }
 
 template <template <bool> class Archive>
-inline bool do_serialize(Archive<true>& ar, cryptonote::difficulty_type_128 &diff)
+inline bool do_serialize(Archive<true>& ar, cryptonote::difficulty_type &diff)
 {
   if (!ar.stream().good())
     return false;
@@ -62,3 +62,4 @@ inline bool do_serialize(Archive<true>& ar, cryptonote::difficulty_type_128 &dif
     return false;
   return true;
 }
+

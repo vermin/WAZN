@@ -1,5 +1,3 @@
-# Copyright (c) 2019-2021 WAZN Project
-# Copyright (c) 2018-2020, The NERVA Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -32,7 +30,6 @@
 
 if (WIN32 OR STATIC)
   add_definitions(-DSTATICLIB)
-  add_definitions(-DCURL_STATICLIB)
   # miniupnp changed their static define
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()
@@ -115,12 +112,11 @@ add_subdirectory(cryptonote_core)
 add_subdirectory(lmdb)
 add_subdirectory(multisig)
 add_subdirectory(net)
-if(NOT IOS)
+add_subdirectory(hardforks)
 add_subdirectory(blockchain_db)
-endif()
 add_subdirectory(mnemonics)
-if(NOT IOS)
 add_subdirectory(rpc)
+if(NOT IOS)
   add_subdirectory(serialization)
 endif()
 add_subdirectory(wallet)
@@ -130,20 +126,20 @@ endif()
 add_subdirectory(cryptonote_protocol)
 if(NOT IOS)
   add_subdirectory(simplewallet)
+  add_subdirectory(gen_multisig)
+  add_subdirectory(gen_ssl_cert)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
-
-endif()
-
-if(BUILD_UTILS)
   add_subdirectory(blockchain_utilities)
-  if (CMAKE_BUILD_TYPE STREQUAL Debug)
-    add_subdirectory(debug_utilities)
-  endif()
 endif()
 
-if (BUILD_EXTRAS)
-  add_subdirectory(extras)
+if(BUILD_DEBUG_UTILITIES)
+  add_subdirectory(debug_utilities)
+endif()
+
+if(PER_BLOCK_CHECKPOINT)
+  add_subdirectory(blocks)
 endif()
 
 add_subdirectory(device)
+add_subdirectory(device_trezor)

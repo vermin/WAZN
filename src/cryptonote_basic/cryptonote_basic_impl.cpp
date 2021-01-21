@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -36,7 +34,6 @@ using namespace epee;
 #include "cryptonote_basic_impl.h"
 #include "string_tools.h"
 #include "serialization/binary_utils.h"
-#include "serialization/container.h"
 #include "cryptonote_format_utils.h"
 #include "cryptonote_config.h"
 #include "misc_language.h"
@@ -71,7 +68,11 @@ namespace cryptonote {
   //-----------------------------------------------------------------------------------------------
   size_t get_min_block_weight(uint8_t version)
   {
-    return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE;
+    if (version < 2)
+      return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V1;
+    if (version < 5)
+      return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2;
+    return CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5;
   }
   //-----------------------------------------------------------------------------------------------
   size_t get_max_tx_size()
@@ -80,15 +81,10 @@ namespace cryptonote {
   }
   //-----------------------------------------------------------------------------------------------
   bool get_block_reward(size_t median_weight, size_t current_block_weight, uint64_t already_generated_coins, uint64_t &reward, uint8_t version) {
-    static_assert(DIFFICULTY_TARGET % 60 == 0,"difficulty targets must be a multiple of 60");
-    const int target_minutes = DIFFICULTY_TARGET / 60;
+    static_assert(DIFFICULTY_TARGET_V2%60==0&&DIFFICULTY_TARGET_V1%60==0,"difficulty targets must be a multiple of 60");
+    const int target = version < 2 ? DIFFICULTY_TARGET_V1 : DIFFICULTY_TARGET_V2;
+    const int target_minutes = target / 60;
     const int emission_speed_factor = EMISSION_SPEED_FACTOR_PER_MINUTE - (target_minutes-1);
-
-    const uint64_t premine = 180000000000000000U;
-     if (median_weight > 0 && already_generated_coins < premine) {
-       reward = premine;
-       return true;
-     }
 
     uint64_t base_reward = (MONEY_SUPPLY - already_generated_coins) >> emission_speed_factor;
     if (base_reward < FINAL_SUBSIDY_PER_MINUTE*target_minutes)
@@ -157,7 +153,7 @@ namespace cryptonote {
     , account_public_address const & adr
     )
   {
-    uint64_t address_prefix = (subaddress ? config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX);
+    uint64_t address_prefix = subaddress ? get_config(nettype).CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX : get_config(nettype).CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
 
     return tools::base58::encode_addr(address_prefix, t_serializable_object_to_blob(adr));
   }
@@ -168,7 +164,7 @@ namespace cryptonote {
     , crypto::hash8 const & payment_id
     )
   {
-    uint64_t integrated_address_prefix = config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
+    uint64_t integrated_address_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
 
     integrated_address iadr = {
       adr, payment_id
@@ -193,9 +189,9 @@ namespace cryptonote {
     , std::string const & str
     )
   {
-    uint64_t address_prefix = config::CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
-    uint64_t integrated_address_prefix = config::CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
-    uint64_t subaddress_prefix = config::CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
+    uint64_t address_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX;
+    uint64_t integrated_address_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX;
+    uint64_t subaddress_prefix = get_config(nettype).CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX;
 
     if (2 * sizeof(public_address_outer_blob) != str.size())
     {
@@ -223,7 +219,7 @@ namespace cryptonote {
         info.has_payment_id = false;
       }
       else {
-        LOG_PRINT_L1("Wrong address prefix: " << prefix << ", expected " << address_prefix
+        LOG_PRINT_L1("Wrong address prefix: " << prefix << ", expected " << address_prefix 
           << " or " << integrated_address_prefix
           << " or " << subaddress_prefix);
         return false;

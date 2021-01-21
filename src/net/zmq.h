@@ -1,4 +1,4 @@
-// Copyright (c) 2019, The Monero Project
+// Copyright (c) 2019-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -26,6 +26,8 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#pragma once
+
 #include <memory>
 #include <string>
 #include <system_error>
@@ -52,6 +54,11 @@
 //! Throw an exception with a custom `msg`, current ZMQ error code, filename, and line number.
 #define MONERO_ZMQ_THROW(msg)                         \
     MONERO_THROW( ::net::zmq::get_error_code(), msg )
+
+namespace epee
+{
+    class byte_slice;
+}
 
 namespace net
 {
@@ -100,6 +107,26 @@ namespace zmq
     //! Unique ZMQ socket handle, calls `zmq_close` on destruction.
     using socket = std::unique_ptr<void, close>;
 
+  /*! Retry a ZMQ function on `EINTR` errors. `F` must return an int with
+      values less than 0 on error.
+
+      \param op The ZMQ function to execute + retry
+      \param args Forwarded to `op`. Must be resuable in case of retry.
+      \return All errors except for `EINTR`. */
+    template<typename F, typename... T>
+    expect<void> retry_op(F op, T&&... args) noexcept(noexcept(op(args...)))
+    {
+      for (;;)
+      {
+        if (0 <= op(args...))
+          return success();
+
+        const int error = zmq_errno();
+        if (error != EINTR)
+          return make_error_code(error);
+      }
+    }
+
     /*! Read all parts of the next message on `socket`. Blocks until the entire
         next message (all parts) are read, or until `zmq_term` is called on the
         `zmq_context` associated with `socket`. If the context is terminated,
@@ -132,5 +159,24 @@ namespace zmq
         \param flags See `zmq_send` for possible flags.
         \return `success()` if sent, otherwise ZMQ error. */
     expect<void> send(epee::span<const std::uint8_t> payload, void* socket, int flags = 0) noexcept;
+
+    /*! Sends `payload` on `socket`. Blocks until the entire message is queued
+        for sending, or until `zmq_term` is called on the `zmq_context`
+        associated with `socket`. If the context is terminated,
+        `make_error_code(ETERM)` is returned.
+
+        \note This will automatically retry on `EINTR`, so exiting on
+            interrupts requires context termination.
+        \note If non-blocking behavior is requested on `socket` or by `flags`,
+            then `net::zmq::make_error_code(EAGAIN)` will be returned if this
+            would block.
+
+        \param payload sent as one message on `socket`.
+        \param socket Handle created with `zmq_socket`.
+        \param flags See `zmq_msg_send` for possible flags.
+
+        \post `payload.emtpy()` - ownership is transferred to zmq.
+        \return `success()` if sent, otherwise ZMQ error. */
+    expect<void> send(epee::byte_slice&& payload, void* socket, int flags = 0) noexcept;
 } // zmq
 } // net

@@ -1,5 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -44,7 +43,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <fstream>
-#include <boost/iostreams/copy.hpp>
 #include <atomic>
 
 #include "common/command_line.h"

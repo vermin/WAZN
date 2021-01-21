@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -33,6 +33,7 @@
 #include "pending_transaction.h"
 #include "unsigned_transaction.h"
 #include "transaction_history.h"
+#include "address_book.h"
 #include "subaddress.h"
 #include "subaddress_account.h"
 #include "common_defines.h"
@@ -59,6 +60,7 @@ namespace Monero {
 
 namespace {
     // copy-pasted from simplewallet
+    static const size_t DEFAULT_MIXIN = 6;
     static const int    DEFAULT_REFRESH_INTERVAL_MILLIS = 1000 * 10;
     // limit maximum refresh interval as one minute
     static const int    MAX_REFRESH_INTERVAL_MILLIS = 1000 * 60 * 1;
@@ -155,7 +157,7 @@ struct Wallet2CallbackImpl : public tools::i_wallet2_callback
         }
     }
 
-    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, uint64_t unlock_time)
+    virtual void on_money_received(uint64_t height, const crypto::hash &txid, const cryptonote::transaction& tx, uint64_t amount, const cryptonote::subaddress_index& subaddr_index, bool is_change, uint64_t unlock_time)
     {
 
         std::string tx_hash =  epee::string_tools::pod_to_hex(txid);
@@ -432,6 +434,7 @@ WalletImpl::WalletImpl(NetworkType nettype, uint64_t kdf_rounds)
     m_wallet->callback(m_wallet2Callback.get());
     m_refreshThreadDone = false;
     m_refreshEnabled = false;
+    m_addressBook.reset(new AddressBookImpl(this));
     m_subaddress.reset(new SubaddressImpl(this));
     m_subaddressAccount.reset(new SubaddressAccountImpl(this));
 
@@ -907,6 +910,11 @@ std::string WalletImpl::path() const
     return m_wallet->path();
 }
 
+void WalletImpl::stop()
+{
+    m_wallet->stop();
+}
+
 bool WalletImpl::store(const std::string &path)
 {
     clearStatus();
@@ -935,13 +943,13 @@ string WalletImpl::keysFilename() const
     return m_wallet->get_keys_file();
 }
 
-bool WalletImpl::init(const std::string &daemon_address, uint64_t upper_transaction_size_limit, const std::string &daemon_username, const std::string &daemon_password, bool use_ssl, bool lightWallet)
+bool WalletImpl::init(const std::string &daemon_address, uint64_t upper_transaction_size_limit, const std::string &daemon_username, const std::string &daemon_password, bool use_ssl, bool lightWallet, const std::string &proxy_address)
 {
     clearStatus();
     m_wallet->set_light_wallet(lightWallet);
     if(daemon_username != "")
         m_daemon_login.emplace(daemon_username, daemon_password);
-    return doInit(daemon_address, upper_transaction_size_limit, use_ssl);
+    return doInit(daemon_address, proxy_address, upper_transaction_size_limit, use_ssl);
 }
 
 bool WalletImpl::lightWalletLogin(bool &isNewWallet) const
@@ -1414,7 +1422,7 @@ PendingTransaction* WalletImpl::restoreMultisigTransaction(const string& signDat
 //    - unconfirmed_transfer_details;
 //    - confirmed_transfer_details)
 
-PendingTransaction *WalletImpl::createTransactionMultDest(const std::vector<string> &dst_addr, const string &payment_id, optional<std::vector<uint64_t>> amount, PendingTransaction::Priority priority, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices)
+PendingTransaction *WalletImpl::createTransactionMultDest(const std::vector<string> &dst_addr, const string &payment_id, optional<std::vector<uint64_t>> amount, uint32_t mixin_count, PendingTransaction::Priority priority, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices)
 
 {
     clearStatus();
@@ -1422,6 +1430,13 @@ PendingTransaction *WalletImpl::createTransactionMultDest(const std::vector<stri
     pauseRefresh();
       
     cryptonote::address_parse_info info;
+
+    // indicates if dst_addr is integrated address (address + payment_id)
+    // TODO:  (https://bitcointalk.org/index.php?topic=753252.msg9985441#msg9985441)
+    size_t fake_outs_count = mixin_count > 0 ? mixin_count : m_wallet->default_mixin();
+    if (fake_outs_count == 0)
+        fake_outs_count = DEFAULT_MIXIN;
+    fake_outs_count = m_wallet->adjust_mixin(fake_outs_count);
 
     uint32_t adjusted_priority = m_wallet->adjust_priority(static_cast<uint32_t>(priority));
 
@@ -1489,11 +1504,11 @@ PendingTransaction *WalletImpl::createTransactionMultDest(const std::vector<stri
         }
         try {
             if (amount) {
-                transaction->m_pending_tx = m_wallet->create_transactions_2(dsts, DEFAULT_MIXIN, 0 /* unlock_time */,
+                transaction->m_pending_tx = m_wallet->create_transactions_2(dsts, fake_outs_count, 0 /* unlock_time */,
                                                                             adjusted_priority,
                                                                             extra, subaddr_account, subaddr_indices);
             } else {
-                transaction->m_pending_tx = m_wallet->create_transactions_all(0, info.address, info.is_subaddress, 1, DEFAULT_MIXIN, 0 /* unlock_time */,
+                transaction->m_pending_tx = m_wallet->create_transactions_all(0, info.address, info.is_subaddress, 1, fake_outs_count, 0 /* unlock_time */,
                                                                               adjusted_priority,
                                                                               extra, subaddr_account, subaddr_indices);
             }
@@ -1573,11 +1588,11 @@ PendingTransaction *WalletImpl::createTransactionMultDest(const std::vector<stri
     return transaction;
 }
 
-PendingTransaction *WalletImpl::createTransaction(const string &dst_addr, const string &payment_id, optional<uint64_t> amount,
+PendingTransaction *WalletImpl::createTransaction(const string &dst_addr, const string &payment_id, optional<uint64_t> amount, uint32_t mixin_count,
                                                   PendingTransaction::Priority priority, uint32_t subaddr_account, std::set<uint32_t> subaddr_indices)
 
 {
-    return createTransactionMultDest(std::vector<string> {dst_addr}, payment_id, amount ? (std::vector<uint64_t> {*amount}) : (optional<std::vector<uint64_t>>()), priority, subaddr_account, subaddr_indices);
+    return createTransactionMultDest(std::vector<string> {dst_addr}, payment_id, amount ? (std::vector<uint64_t> {*amount}) : (optional<std::vector<uint64_t>>()), mixin_count, priority, subaddr_account, subaddr_indices);
 }
 
 PendingTransaction *WalletImpl::createSweepUnmixableTransaction()
@@ -1667,9 +1682,35 @@ void WalletImpl::disposeTransaction(PendingTransaction *t)
     delete t;
 }
 
+uint64_t WalletImpl::estimateTransactionFee(const std::vector<std::pair<std::string, uint64_t>> &destinations,
+                                            PendingTransaction::Priority priority) const
+{
+    const size_t pubkey_size = 33;
+    const size_t encrypted_paymentid_size = 11;
+    const size_t extra_size = pubkey_size + encrypted_paymentid_size;
+
+    return m_wallet->estimate_fee(
+        m_wallet->use_fork_rules(HF_VERSION_PER_BYTE_FEE, 0),
+        m_wallet->use_fork_rules(4, 0),
+        1,
+        m_wallet->get_min_ring_size() - 1,
+        destinations.size() + 1,
+        extra_size,
+        m_wallet->use_fork_rules(8, 0),
+        m_wallet->use_fork_rules(HF_VERSION_CLSAG, 0),
+        m_wallet->get_base_fee(),
+        m_wallet->get_fee_multiplier(m_wallet->adjust_priority(static_cast<uint32_t>(priority))),
+        m_wallet->get_fee_quantization_mask());
+}
+
 TransactionHistory *WalletImpl::history()
 {
     return m_history.get();
+}
+
+AddressBook *WalletImpl::addressBook()
+{
+    return m_addressBook.get();
 }
 
 Subaddress *WalletImpl::subaddress()
@@ -1686,6 +1727,16 @@ void WalletImpl::setListener(WalletListener *l)
 {
     // TODO thread synchronization;
     m_wallet2Callback->setListener(l);
+}
+
+uint32_t WalletImpl::defaultMixin() const
+{
+    return m_wallet->default_mixin();
+}
+
+void WalletImpl::setDefaultMixin(uint32_t arg)
+{
+    m_wallet->default_mixin(arg);
 }
 
 bool WalletImpl::setCacheAttribute(const std::string &key, const std::string &val)
@@ -1952,7 +2003,7 @@ bool WalletImpl::checkReserveProof(const std::string &address, const std::string
 
 std::string WalletImpl::signMessage(const std::string &message)
 {
-  return m_wallet->sign(message);
+  return m_wallet->sign(message, tools::wallet2::sign_with_spend_key);
 }
 
 bool WalletImpl::verifySignedMessage(const std::string &message, const std::string &address, const std::string &signature) const
@@ -1962,7 +2013,7 @@ bool WalletImpl::verifySignedMessage(const std::string &message, const std::stri
   if (!cryptonote::get_account_address_from_str(info, m_wallet->nettype(), address))
     return false;
 
-  return m_wallet->verify(message, info.address, signature);
+  return m_wallet->verify(message, info.address, signature).valid;
 }
 
 std::string WalletImpl::signMultisigParticipant(const std::string &message) const
@@ -2041,6 +2092,11 @@ void WalletImpl::setTrustedDaemon(bool arg)
 bool WalletImpl::trustedDaemon() const
 {
     return m_wallet->is_trusted_daemon();
+}
+
+bool WalletImpl::setProxy(const std::string &address)
+{
+    return m_wallet->set_proxy(address);
 }
 
 bool WalletImpl::watchOnly() const
@@ -2196,9 +2252,9 @@ void WalletImpl::pendingTxPostProcess(PendingTransactionImpl * pending)
   pending->m_pending_tx = exported_txs.ptx;
 }
 
-bool WalletImpl::doInit(const string &daemon_address, uint64_t upper_transaction_size_limit, bool ssl)
+bool WalletImpl::doInit(const string &daemon_address, const std::string &proxy_address, uint64_t upper_transaction_size_limit, bool ssl)
 {
-    if (!m_wallet->init(daemon_address, m_daemon_login, boost::asio::ip::tcp::endpoint{}, upper_transaction_size_limit))
+    if (!m_wallet->init(daemon_address, m_daemon_login, proxy_address, upper_transaction_size_limit))
        return false;
 
     // in case new wallet, this will force fast-refresh (pulling hashes instead of blocks)

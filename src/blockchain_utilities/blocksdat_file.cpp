@@ -1,5 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -179,3 +178,4 @@ bool BlocksdatFile::store_blockchain_raw(Blockchain* _blockchain_storage, tx_mem
 
   return BlocksdatFile::close();
 }
+

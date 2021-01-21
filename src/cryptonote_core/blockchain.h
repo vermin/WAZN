@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -32,6 +30,10 @@
 
 #pragma once
 #include <boost/asio/io_service.hpp>
+#include <boost/function/function_fwd.hpp>
+#if BOOST_VERSION >= 107400
+#include <boost/serialization/library_version_type.hpp>
+#endif
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/version.hpp>
 #include <boost/serialization/list.hpp>
@@ -39,7 +41,6 @@
 #include <boost/multi_index/global_fun.hpp>
 #include <boost/multi_index/hashed_index.hpp>
 #include <boost/multi_index/member.hpp>
-#include <boost/circular_buffer.hpp>
 #include <atomic>
 #include <functional>
 #include <unordered_map>
@@ -58,7 +59,6 @@
 #include "cryptonote_basic/verification_context.h"
 #include "crypto/hash.h"
 #include "checkpoints/checkpoints.h"
-#include "checkpoints/quicksync.h"
 #include "cryptonote_basic/hardfork.h"
 #include "blockchain_db/blockchain_db.h"
 
@@ -80,11 +80,11 @@ namespace cryptonote
     db_nosync //!< Leave syncing up to the backing db (safest, but slowest because of disk I/O)
   };
 
-  /**
+  /** 
    * @brief Callback routine that returns checkpoints data for specific network type
-   *
+   * 
    * @param network network type
-   *
+   * 
    * @return checkpoints data, empty span if there ain't any checkpoints for specific network type
    */
   typedef std::function<const epee::span<const unsigned char>(cryptonote::network_type network)> GetCheckpointsCallback;
@@ -103,7 +103,7 @@ namespace cryptonote
       block   bl; //!< the block
       uint64_t height; //!< the height of the block in the blockchain
       uint64_t block_cumulative_weight; //!< the weight of the block
-      difficulty_type_128 cumulative_difficulty; //!< the accumulated difficulty after that block
+      difficulty_type cumulative_difficulty; //!< the accumulated difficulty after that block
       uint64_t already_generated_coins; //!< the total coins minted after that block
     };
 
@@ -119,10 +119,6 @@ namespace cryptonote
      */
     ~Blockchain();
 
-    HardFork* get_hardfork() const;
-
-    uint32_t get_minimum_version_for_fork(uint32_t min_ver) const;
-
     /**
      * @brief Initialize the Blockchain state
      *
@@ -135,7 +131,7 @@ namespace cryptonote
      *
      * @return true on success, false if any initialization steps fail
      */
-    bool init(BlockchainDB* db, const network_type nettype = MAINNET, bool offline = false, const cryptonote::test_options *test_options = NULL, uint64_t fixed_difficulty = 0, const GetCheckpointsCallback& get_checkpoints = nullptr);
+    bool init(BlockchainDB* db, const network_type nettype = MAINNET, bool offline = false, const cryptonote::test_options *test_options = NULL, difficulty_type fixed_difficulty = 0, const GetCheckpointsCallback& get_checkpoints = nullptr);
 
     /**
      * @brief Initialize the Blockchain state
@@ -315,7 +311,23 @@ namespace cryptonote
      *
      * @return the target
      */
-    uint64_t get_difficulty_for_next_block();
+    difficulty_type get_difficulty_for_next_block();
+
+    /**
+     * @brief check currently stored difficulties against difficulty checkpoints
+     *
+     * @return {flag, height} flag: true if all difficulty checkpoints pass, height: the last checkpoint height before the difficulty drift bug starts
+     */
+    std::pair<bool, uint64_t> check_difficulty_checkpoints() const;
+
+    /**
+     * @brief recalculate difficulties for blocks after the last difficulty checkpoints to circumvent the annoying 'difficulty drift' bug
+     *
+     * @param start_height: if omitted, starts recalculation from the last difficulty checkpoint
+     *
+     * @return number of blocks whose difficulties got corrected
+     */
+    size_t recalculate_difficulties(boost::optional<uint64_t> start_height = boost::none);
 
     /**
      * @brief adds a block to the blockchain
@@ -354,8 +366,8 @@ namespace cryptonote
      *
      * @return true if block template filled in successfully, else false
      */
-    bool create_block_template(block& b, const account_public_address& miner_address, uint64_t& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
-    bool create_block_template(block& b, const crypto::hash *from_block, const account_public_address& miner_address, uint64_t& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce);
+    bool create_block_template(block& b, const account_public_address& miner_address, difficulty_type& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
+    bool create_block_template(block& b, const crypto::hash *from_block, const account_public_address& miner_address, difficulty_type& di, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
 
     /**
      * @brief checks if a block is known about with a given hash
@@ -364,10 +376,12 @@ namespace cryptonote
      * for a block with the given hash
      *
      * @param id the hash to search for
+     * @param where the type of block, if non NULL
      *
      * @return true if the block is known, else false
      */
-    bool have_block(const crypto::hash& id) const;
+    bool have_block_unlocked(const crypto::hash& id, int *where = NULL) const;
+    bool have_block(const crypto::hash& id, int *where = NULL) const;
 
     /**
      * @brief gets the total number of transactions on the main chain
@@ -452,11 +466,12 @@ namespace cryptonote
      * @param total_height return-by-reference our current blockchain height
      * @param start_height return-by-reference the height of the first block returned
      * @param pruned whether to return full or pruned tx blobs
-     * @param max_count the max number of blocks to get
+     * @param max_block_count the max number of blocks to get
+     * @param max_tx_count the max number of txes to get (it can get overshot by the last block's number of txes minus 1)
      *
      * @return true if a block found in common or req_start_block specified, else false
      */
-    bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_count) const;
+    bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_block_count, size_t max_tx_count) const;
 
     /**
      * @brief retrieves a set of blocks and their transactions, and possibly other transactions
@@ -573,34 +588,6 @@ namespace cryptonote
     bool check_tx_inputs(transaction& tx, uint64_t& pmax_used_block_height, crypto::hash& max_used_block_id, tx_verification_context &tvc, bool kept_by_block = false) const;
 
     /**
-     * @brief get dynamic per kB fee for a given block size
-     *
-     * The dynamic fee is based on the block size in a past window, and
-     * the current block reward. It is expressed by kB.
-     *
-     * @param block_reward the current block reward
-     * @param median_block_size the median blob's size in the past window
-     * @param version hard fork version for rules and constants to use
-     *
-     * @return the per kB fee
-     */
-    static uint64_t get_dynamic_per_kb_fee(uint64_t block_reward, size_t median_block_weight, uint8_t version);
-
-    /**
-     * @brief get dynamic per kB fee estimate for the next few blocks
-     *
-     * The dynamic fee is based on the block size in a past window, and
-     * the current block reward. It is expressed by kB. This function
-     * calculates an estimate for a dynamic fee which will be valid for
-     * the next grace_blocks
-     *
-     * @param grace_blocks number of blocks we want the fee to be valid for
-     *
-     * @return the per kB fee estimate
-     */
-    uint64_t get_dynamic_per_kb_fee_estimate(uint64_t grace_blocks) const;
-
-    /**
      * @brief get fee quantization mask
      *
      * The dynamic fee may be quantized, to mask out the last decimal places
@@ -608,6 +595,36 @@ namespace cryptonote
      * @return the fee quantized mask
      */
     static uint64_t get_fee_quantization_mask();
+
+    /**
+     * @brief get dynamic per kB or byte fee for a given block weight
+     *
+     * The dynamic fee is based on the block weight in a past window, and
+     * the current block reward. It is expressed by kB before v8, and
+     * per byte from v8.
+     *
+     * @param block_reward the current block reward
+     * @param median_block_weight the median block weight in the past window
+     * @param version hard fork version for rules and constants to use
+     *
+     * @return the fee
+     */
+    static uint64_t get_dynamic_base_fee(uint64_t block_reward, size_t median_block_weight, uint8_t version);
+
+    /**
+     * @brief get dynamic per kB or byte fee estimate for the next few blocks
+     *
+     * The dynamic fee is based on the block weight in a past window, and
+     * the current block reward. It is expressed by kB before v8, and
+     * per byte from v8.
+     * This function calculates an estimate for a dynamic fee which will be
+     * valid for the next grace_blocks
+     *
+     * @param grace_blocks number of blocks we want the fee to be valid for
+     *
+     * @return the fee estimate
+     */
+    uint64_t get_dynamic_base_fee_estimate(uint64_t grace_blocks) const;
 
     /**
      * @brief validate a transaction's fee
@@ -665,7 +682,7 @@ namespace cryptonote
      *
      * @return the difficulty
      */
-    uint64_t block_difficulty(uint64_t i) const;
+    difficulty_type block_difficulty(uint64_t i) const;
 
     /**
      * @brief gets blocks based on a list of block hashes
@@ -734,8 +751,6 @@ namespace cryptonote
      */
     bool update_checkpoints(const std::string& file_path, bool check_dns);
 
-    quicksync get_quicksync() const { return m_quicksync; }
-    void set_quicksync(quicksync&& qs) { m_quicksync = qs; }
 
     // user options, must be called before calling init()
 
@@ -756,7 +771,7 @@ namespace cryptonote
      *
      * @param notify the notify object to call at every new block
      */
-    void set_block_notify(const std::shared_ptr<tools::Notify> &notify) { m_block_notify = notify; }
+    void add_block_notify(boost::function<void(std::uint64_t, epee::span<const block>)> &&notify);
 
     /**
      * @brief sets a reorg notify object to call for every reorg
@@ -778,11 +793,11 @@ namespace cryptonote
     void set_show_time_stats(bool stats) { m_show_time_stats = stats; }
 
     /**
-     * @brief gets the hardfork heights of given network
+     * @brief gets the hardfork voting state object
      *
      * @return the HardFork object
      */
-    static const std::vector<hard_fork>& get_hard_fork_heights(network_type nettype);
+    HardFork::State get_hard_fork_state() const;
 
     /**
      * @brief gets the current hardfork version in use/voted for
@@ -841,7 +856,7 @@ namespace cryptonote
      * @param earliest_height the earliest height at which <version> is allowed
      * @param voting which version this node is voting for/using
      *
-     * @return whether the version queried is enabled
+     * @return whether the version queried is enabled 
      */
     bool get_hard_fork_voting_info(uint8_t version, uint32_t &window, uint32_t &votes, uint32_t &threshold, uint64_t &earliest_height, uint8_t &voting) const;
 
@@ -953,6 +968,16 @@ namespace cryptonote
         std::vector<output_data_t> &outputs) const;
 
     /**
+     * @brief computes the "short" and "long" hashes for a set of blocks
+     *
+     * @param height the height of the first block
+     * @param blocks the blocks to be hashed
+     * @param map return-by-reference the hashes for each block
+     */
+    void block_longhash_worker(uint64_t height, const epee::span<const block> &blocks,
+        std::unordered_map<crypto::hash, crypto::hash> &map) const;
+
+    /**
      * @brief returns a set of known alternate chains
      *
      * @return a vector of chains
@@ -962,12 +987,14 @@ namespace cryptonote
     void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata &blob, const txpool_tx_meta_t &meta);
     void update_txpool_tx(const crypto::hash &txid, const txpool_tx_meta_t &meta);
     void remove_txpool_tx(const crypto::hash &txid);
-    uint64_t get_txpool_tx_count(bool include_unrelayed_txes = true) const;
+    uint64_t get_txpool_tx_count(bool include_sensitive = false) const;
     bool get_txpool_tx_meta(const crypto::hash& txid, txpool_tx_meta_t &meta) const;
-    bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd) const;
-    cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid) const;
-    bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata*)>, bool include_blob = false, bool include_unrelayed_txes = true) const;
+    bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd, relay_category tx_category) const;
+    cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid, relay_category tx_category) const;
+    bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata_ref*)>, bool include_blob = false, relay_category tx_category = relay_category::broadcasted) const;
+    bool txpool_tx_matches_category(const crypto::hash& tx_hash, relay_category category);
 
+    bool is_within_compiled_block_hash_area() const { return is_within_compiled_block_hash_area(m_db->height()); }
     uint64_t prevalidate_block_hashes(uint64_t height, const std::vector<crypto::hash> &hashes, const std::vector<uint64_t> &weights);
     uint32_t get_blockchain_pruning_seed() const { return m_db->get_blockchain_pruning_seed(); }
     bool prune_blockchain(uint32_t pruning_seed = 0);
@@ -978,6 +1005,13 @@ namespace cryptonote
     void unlock();
 
     void cancel();
+
+    /**
+     * @brief called when we see a tx originating from a block
+     *
+     * Used for handling txes from historical blocks in a fast way
+     */
+    void on_new_tx_from_block(const cryptonote::transaction &tx);
 
     /**
      * @brief returns the timestamps of the last N blocks
@@ -992,12 +1026,39 @@ namespace cryptonote
     void pop_blocks(uint64_t nblocks);
 
     /**
+     * @brief checks whether a given block height is included in the precompiled block hash area
+     *
+     * @param height the height to check for
+     */
+    bool is_within_compiled_block_hash_area(uint64_t height) const;
+
+    /**
      * @brief checks whether we have known weights for the given block heights
      *
      * @param height the start height to check for
      * @param nblocks how many blocks to check from that height
      */
     bool has_block_weights(uint64_t height, uint64_t nblocks) const;
+
+    /**
+     * @brief flush the invalid blocks set
+     */
+    void flush_invalid_blocks();
+
+    /**
+     * @brief get the "adjusted time"
+     *
+     * Computes the median timestamp of the previous 60 blocks, projects it
+     * onto the current block to get an 'adjusted median time' which approximates
+     * what the current block's timestamp should be. Also projects the previous
+     * block's timestamp to estimate the current block's timestamp.
+     * 
+     * Returns the minimum of the two projections, or the current local time on
+     * the machine if less than 60 blocks are available.
+     *
+     * @return current time approximated from chain data
+     */
+    uint64_t get_adjusted_time(uint64_t height) const;
 
 #ifndef IN_UNIT_TESTS
   private:
@@ -1010,7 +1071,6 @@ namespace cryptonote
 
     typedef std::unordered_map<crypto::hash, block_extended_info> blocks_ext_by_hash;
 
-    crypto::cn_hash_context_t *m_hash_context;
 
     BlockchainDB* m_db;
 
@@ -1024,8 +1084,9 @@ namespace cryptonote
 
     // metadata containers
     std::unordered_map<crypto::hash, std::unordered_map<crypto::key_image, std::vector<output_data_t>>> m_scan_table;
+    std::unordered_map<crypto::hash, crypto::hash> m_blocks_longhash_table;
 
-    // SHA-3 hashes for each block and for fast pow checking
+    // Keccak hashes for each block and for fast pow checking
     std::vector<std::pair<crypto::hash, crypto::hash>> m_blocks_hash_of_hashes;
     std::vector<std::pair<crypto::hash, uint64_t>> m_blocks_hash_check;
     std::vector<crypto::hash> m_blocks_txs_check;
@@ -1042,8 +1103,9 @@ namespace cryptonote
     uint64_t m_sync_counter;
     uint64_t m_bytes_to_sync;
     std::vector<uint64_t> m_timestamps;
-    std::vector<difficulty_type_128> m_difficulties;
+    std::vector<difficulty_type> m_difficulties;
     uint64_t m_timestamps_and_difficulties_height;
+    bool m_reset_timestamps_and_difficulties_height;
     uint64_t m_long_term_block_weights_window;
     uint64_t m_long_term_effective_median_block_weight;
     mutable crypto::hash m_long_term_block_weights_cache_tip_hash;
@@ -1051,7 +1113,7 @@ namespace cryptonote
 
     epee::critical_section m_difficulty_lock;
     crypto::hash m_difficulty_for_next_block_top_hash;
-    uint64_t m_difficulty_for_next_block;
+    difficulty_type m_difficulty_for_next_block;
 
     boost::asio::io_service m_async_service;
     boost::thread_group m_async_pool;
@@ -1063,13 +1125,12 @@ namespace cryptonote
 
     checkpoints m_checkpoints;
     bool m_enforce_dns_checkpoints;
-    quicksync m_quicksync;
 
     HardFork *m_hardfork;
 
     network_type m_nettype;
     bool m_offline;
-    uint64_t m_fixed_difficulty;
+    difficulty_type m_fixed_difficulty;
 
     std::atomic<bool> m_cancel;
 
@@ -1077,15 +1138,22 @@ namespace cryptonote
     block m_btc;
     account_public_address m_btc_address;
     blobdata m_btc_nonce;
-    uint64_t m_btc_difficulty;
+    difficulty_type m_btc_difficulty;
     uint64_t m_btc_height;
     uint64_t m_btc_pool_cookie;
     uint64_t m_btc_expected_reward;
+    crypto::hash m_btc_seed_hash;
+    uint64_t m_btc_seed_height;
     bool m_btc_valid;
+
 
     bool m_batch_success;
 
-    std::shared_ptr<tools::Notify> m_block_notify;
+    /* `boost::function` is used because the implementation never allocates if
+       the callable object has a single `std::shared_ptr` or `std::weap_ptr`
+       internally. Whereas, the libstdc++ `std::function` will allocate. */
+
+    std::vector<boost::function<void(std::uint64_t, epee::span<const block>)>> m_block_notifiers;
     std::shared_ptr<tools::Notify> m_reorg_notify;
 
     // for prepare_handle_incoming_blocks
@@ -1132,10 +1200,11 @@ namespace cryptonote
      * @param output_keys return-by-reference the public keys of the outputs in the input set
      * @param rct_signatures the ringCT signatures, which are only valid if tx version > 1
      * @param pmax_related_block_height return-by-pointer the height of the most recent block in the input set
+     * @param hf_version the consensus rules version to use
      *
      * @return false if any output is not yet unlocked, or is missing, otherwise true
      */
-    bool check_tx_input(size_t tx_version,const txin_to_key& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height) const;
+    bool check_tx_input(size_t tx_version,const txin_to_key& txin, const crypto::hash& tx_prefix_hash, const std::vector<crypto::signature>& sig, const rct::rctSig &rct_signatures, std::vector<rct::ctkey> &output_keys, uint64_t* pmax_related_block_height, uint8_t hf_version) const;
 
     /**
      * @brief validate a transaction's inputs and their keys
@@ -1189,10 +1258,11 @@ namespace cryptonote
      *
      * @param bl the block to be added
      * @param bvc metadata concerning the block's validity
+     * @param notify if set to true, sends new block notification on success
      *
      * @return true if the block was added successfully, otherwise false
      */
-    bool handle_block_to_main_chain(const block& bl, block_verification_context& bvc);
+    bool handle_block_to_main_chain(const block& bl, block_verification_context& bvc, bool notify = true);
 
     /**
      * @brief validate and add a new block to the end of the blockchain
@@ -1204,10 +1274,11 @@ namespace cryptonote
      * @param bl the block to be added
      * @param id the hash of the block
      * @param bvc metadata concerning the block's validity
+     * @param notify if set to true, sends new block notification on success
      *
      * @return true if the block was added successfully, otherwise false
      */
-    bool handle_block_to_main_chain(const block& bl, const crypto::hash& id, block_verification_context& bvc);
+    bool handle_block_to_main_chain(const block& bl, const crypto::hash& id, block_verification_context& bvc, bool notify = true);
 
     /**
      * @brief validate and add a new block to an alternate blockchain
@@ -1244,7 +1315,7 @@ namespace cryptonote
      *
      * @return the difficulty requirement
      */
-    uint64_t get_next_difficulty_for_alternative_chain(const std::list<block_extended_info>& alt_chain, block_extended_info& bei) const;
+    difficulty_type get_next_difficulty_for_alternative_chain(const std::list<block_extended_info>& alt_chain, block_extended_info& bei) const;
 
     /**
      * @brief sanity checks a miner transaction before validating an entire block
@@ -1254,10 +1325,11 @@ namespace cryptonote
      *
      * @param b the block containing the miner transaction
      * @param height the height at which the block will be added
+     * @param hf_version the consensus rules to apply
      *
      * @return false if anything is found wrong with the miner transaction, otherwise true
      */
-    bool prevalidate_miner_transaction(const block& b, uint64_t height);
+    bool prevalidate_miner_transaction(const block& b, uint64_t height, uint8_t hf_version);
 
     /**
      * @brief validates a miner (coinbase) transaction
@@ -1292,22 +1364,6 @@ namespace cryptonote
     bool rollback_blockchain_switching(std::list<block>& original_chain, uint64_t rollback_height);
 
     /**
-     * @brief compute the generated coin count for a mined block
-     *
-     * The number of generated coins can never exceed MONEY_SUPPLY, even if the
-     * blockchain has actually minted more than MONEY_SUPPLY coins due to tail emissions.
-
-     * @param block_reward the block reward for the block
-     * @param prev_generated_coins the generated coin count for the prior block
-     *
-     * @return the generated coin count
-     */
-    inline uint64_t compute_generated_coins(uint64_t block_reward, uint64_t prev_generated_coins)
-    {
-      return (block_reward < (MONEY_SUPPLY - prev_generated_coins) ? prev_generated_coins + block_reward : MONEY_SUPPLY);
-    }
-
-    /**
      * @brief gets recent block weights for median calculation
      *
      * get the block weights of the last <count> blocks, and return by reference <weights>.
@@ -1336,10 +1392,11 @@ namespace cryptonote
      * unlock_time is either a block index or a unix time.
      *
      * @param unlock_time the unlock parameter (height or time)
+     * @param hf_version the consensus rules version to use
      *
      * @return true if spendable, otherwise false
      */
-    bool is_tx_spendtime_unlocked(uint64_t unlock_time) const;
+    bool is_tx_spendtime_unlocked(uint64_t unlock_time, uint8_t hf_version) const;
 
     /**
      * @brief stores an invalid block in a separate container
@@ -1401,16 +1458,6 @@ namespace cryptonote
     bool check_block_timestamp(std::vector<uint64_t>& timestamps, const block& b) const { uint64_t median_ts; return check_block_timestamp(timestamps, b, median_ts); }
 
     /**
-     * @brief get the "adjusted time"
-     *
-     * Currently this simply returns the current time according to the
-     * user's machine.
-     *
-     * @return the current time
-     */
-    uint64_t get_adjusted_time() const;
-
-    /**
      * @brief finish an alternate chain's timestamp window from the main chain
      *
      * for an alternate chain, get the timestamps from the main chain to complete
@@ -1456,13 +1503,24 @@ namespace cryptonote
         const std::vector<rct::ctkey> &pubkeys, const std::vector<crypto::signature> &sig, uint64_t &result) const;
 
     /**
-     * @brief expands transaction data from blockchain
+     * @brief loads block hashes from compiled-in data set
+     *
+     * A (possibly empty) set of block hashes can be compiled into the
+     * monero daemon binary.  This function loads those hashes into
+     * a useful state.
+     * 
+     * @param get_checkpoints if set, will be called to get checkpoints data
+     */
+    void load_compiled_in_block_hashes(const GetCheckpointsCallback& get_checkpoints);
+
+    /**
+     * @brief expands v2 transaction data from blockchain
      *
      * RingCT transactions do not transmit some of their data if it
      * can be reconstituted by the receiver. This function expands
      * that implicit data.
      */
-    bool expand_transaction(transaction &tx, const crypto::hash &tx_prefix_hash, const std::vector<std::vector<rct::ctkey>> &pubkeys) const;
+    bool expand_transaction_2(transaction &tx, const crypto::hash &tx_prefix_hash, const std::vector<std::vector<rct::ctkey>> &pubkeys) const;
 
     /**
      * @brief invalidates any cached block template
@@ -1474,6 +1532,6 @@ namespace cryptonote
      *
      * At some point, may be used to push an update to miners
      */
-    void cache_block_template(const block &b, const cryptonote::account_public_address &address, const blobdata &nonce, const uint64_t &diff, uint64_t height, uint64_t expected_reward, uint64_t pool_cookie);
+    void cache_block_template(const block &b, const cryptonote::account_public_address &address, const blobdata &nonce, const difficulty_type &diff, uint64_t height, uint64_t expected_reward, uint64_t seed_height, const crypto::hash &seed_hash, uint64_t pool_cookie);
   };
 }  // namespace cryptonote

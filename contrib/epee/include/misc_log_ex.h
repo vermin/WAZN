@@ -1,5 +1,3 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
 // Copyright (c) 2006-2013, Andrey N. Sabelnikov, www.sabelnikov.net
 // All rights reserved.
 //
@@ -88,14 +86,6 @@
 #define MGINFO_BLUE(x) MCLOG_BLUE(el::Level::Info, "global",x)
 #define MGINFO_MAGENTA(x) MCLOG_MAGENTA(el::Level::Info, "global",x)
 #define MGINFO_CYAN(x) MCLOG_CYAN(el::Level::Info, "global",x)
-
-#define MGUSER(x) MCINFO("user",x)
-#define MGUSER_RED(x) MCLOG_RED(el::Level::Info, "user",x)
-#define MGUSER_GREEN(x) MCLOG_GREEN(el::Level::Info, "user",x)
-#define MGUSER_YELLOW(x) MCLOG_YELLOW(el::Level::Info, "user",x)
-#define MGUSER_BLUE(x) MCLOG_BLUE(el::Level::Info, "user",x)
-#define MGUSER_MAGENTA(x) MCLOG_MAGENTA(el::Level::Info, "user",x)
-#define MGUSER_CYAN(x) MCLOG_CYAN(el::Level::Info, "user",x)
 
 #define IFLOG(level, cat, color, type, init, x) \
   do { \
@@ -255,4 +245,5 @@ bool mtrace(const char *category, const char *format, ...) ATTRIBUTE_PRINTF;
 }
 
 #endif
+
 #endif //_MISC_LOG_EX_H_

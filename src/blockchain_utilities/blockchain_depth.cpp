@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -89,12 +87,12 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
     std::cout << desc_options << std::endl;
     return 1;
   }
 
-  mlog_configure(mlog_get_default_log_path("wazn-blockchain-depth.log"), true);
+  mlog_configure(mlog_get_default_log_path("monero-blockchain-depth.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
     mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
   else
@@ -232,7 +230,7 @@ int main(int argc, char* argv[])
             auto absolute_offsets = cryptonote::relative_output_offsets_to_absolute(txin.key_offsets);
             for (uint64_t offset: absolute_offsets)
             {
-              const output_data_t od = db->get_output_key_only(amount, offset);
+              const output_data_t od = db->get_output_key(amount, offset);
               const crypto::hash block_hash = db->get_block_hash_from_height(od.height);
               bd = db->get_block_blob(block_hash);
               cryptonote::block b;

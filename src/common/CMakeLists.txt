@@ -1,6 +1,4 @@
-# Copyright (c) 2019-2021 WAZN Project
-# Copyright (c) 2018-2019, The NERVA Project
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
 #
@@ -30,10 +28,6 @@
 
 include_directories(SYSTEM ${OPENSSL_INCLUDE_DIR})
 
-if (WIN32 OR STATIC)
-  add_definitions(-DCURL_STATICLIB)
-endif ()
-
 set(common_sources
   base58.cpp
   command_line.cpp
@@ -52,9 +46,7 @@ set(common_sources
   updates.cpp
   aligned.c
   timings.cc
-  combinator.cpp
-  wazn_https.cpp
-  dns_config.cpp)
+  combinator.cpp)
 
 if (STACK_TRACE)
   list(APPEND common_sources stack_trace.cpp)
@@ -95,8 +87,7 @@ set(common_private_headers
   aligned.h
   timings.h
   combinator.h
-  wazn_https.h
-  dns_config.h)
+  utf8.h)
 
 monero_private_headers(common
   ${common_private_headers})
@@ -117,7 +108,6 @@ target_link_libraries(common
     ${Boost_REGEX_LIBRARY}
     ${Boost_CHRONO_LIBRARY}
   PRIVATE
-    ${CURL_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
 

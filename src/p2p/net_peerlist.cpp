@@ -47,6 +47,8 @@ namespace nodetool
 {
   namespace
   {
+    constexpr unsigned CURRENT_PEERLIST_STORAGE_ARCHIVE_VER = 6;
+ 
     struct by_zone
     {
       using zone = epee::net_utils::zone;
@@ -73,6 +75,10 @@ namespace nodetool
     template<typename Elem, typename Archive>
     std::vector<Elem> load_peers(Archive& a, unsigned ver)
     {
+      // at v6, we drop existing peerlists, because annoying change
+      if (ver < 6)
+        return {};
+
       uint64_t size = 0;
       a & size;
       
@@ -135,6 +141,13 @@ namespace nodetool
     elem.white = load_peers<peerlist_entry>(a, ver);
     elem.gray = load_peers<peerlist_entry>(a, ver);
     elem.anchor = load_peers<anchor_peerlist_entry>(a, ver);
+
+    if (ver == 0)
+    {
+      // from v1, we do not store the peer id anymore
+      peerid_type peer_id{};
+      a & peer_id;
+    }
   }
  
   template<typename Archive>
@@ -275,4 +288,21 @@ namespace nodetool
     copy_peers(peers.gray, m_peers_gray.get<by_addr>());
     copy_peers(peers.anchor, m_peers_anchor.get<by_addr>());
   }
+
+  void peerlist_manager::evict_host_from_white_peerlist(const peerlist_entry& pr)
+  {
+    peers_indexed::index<by_time>::type& sorted_index=m_peers_white.get<by_time>();
+    auto i = sorted_index.begin();
+    while (i != sorted_index.end())
+    {
+      if (i->adr.is_same_host(pr.adr))
+        i = sorted_index.erase(i);
+      else
+        ++i;
+    }
+  }
 }
+
+BOOST_CLASS_VERSION(nodetool::peerlist_types, nodetool::CURRENT_PEERLIST_STORAGE_ARCHIVE_VER);
+BOOST_CLASS_VERSION(nodetool::peerlist_join, nodetool::CURRENT_PEERLIST_STORAGE_ARCHIVE_VER);
+

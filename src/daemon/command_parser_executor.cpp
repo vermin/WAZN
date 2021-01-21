@@ -1,21 +1,21 @@
-// Copyright (c) 2014-2019, The Monero Project
-//
+// Copyright (c) 2014-2020, The Monero Project
+// 
 // All rights reserved.
-//
+// 
 // Redistribution and use in source and binary forms, with or without modification, are
 // permitted provided that the following conditions are met:
-//
+// 
 // 1. Redistributions of source code must retain the above copyright notice, this list of
 //    conditions and the following disclaimer.
-//
+// 
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
 //    of conditions and the following disclaimer in the documentation and/or other
 //    materials provided with the distribution.
-//
+// 
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
 //    used to endorse or promote products derived from this software without specific
 //    prior written permission.
-//
+// 
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
 // EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 // MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
@@ -28,7 +28,7 @@
 
 #include "common/dns_utils.h"
 #include "common/command_line.h"
-#include "version.h"
+#include "net/parse.h"
 #include "daemon/command_parser_executor.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -154,6 +154,16 @@ bool t_command_parser_executor::print_blockchain_info(const std::vector<std::str
   }
   uint64_t start_index = 0;
   uint64_t end_index = 0;
+  if (args[0][0] == '-')
+  {
+    int64_t nblocks;
+    if(!epee::string_tools::get_xtype_from_string(nblocks, args[0]))
+    {
+      std::cout << "wrong number of blocks" << std::endl;
+      return false;
+    }
+    return m_executor.print_blockchain_info(nblocks, (uint64_t)-nblocks);
+  }
   if(!epee::string_tools::get_xtype_from_string(start_index, args[0]))
   {
     std::cout << "wrong starter block index parameter" << std::endl;
@@ -197,7 +207,7 @@ bool t_command_parser_executor::set_log_level(const std::vector<std::string>& ar
   }
 }
 
-bool t_command_parser_executor::print_height(const std::vector<std::string>& args)
+bool t_command_parser_executor::print_height(const std::vector<std::string>& args) 
 {
   if (!args.empty()) return false;
 
@@ -244,12 +254,15 @@ bool t_command_parser_executor::print_block(const std::vector<std::string>& args
 
 bool t_command_parser_executor::print_transaction(const std::vector<std::string>& args)
 {
+  bool include_metadata = false;
   bool include_hex = false;
   bool include_json = false;
 
   // Assumes that optional flags come after mandatory argument <transaction_hash>
   for (unsigned int i = 1; i < args.size(); ++i) {
-    if (args[i] == "+hex")
+    if (args[i] == "+meta")
+      include_metadata = true;
+    else if (args[i] == "+hex")
       include_hex = true;
     else if (args[i] == "+json")
       include_json = true;
@@ -261,7 +274,7 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
   }
   if (args.empty())
   {
-    std::cout << "expected: print_tx <transaction_hash> [+hex] [+json]" << std::endl;
+    std::cout << "expected: print_tx <transaction_hash> [+meta] [+hex] [+json]" << std::endl;
     return true;
   }
 
@@ -269,7 +282,7 @@ bool t_command_parser_executor::print_transaction(const std::vector<std::string>
   crypto::hash tx_hash;
   if (parse_hash256(str_hash, tx_hash))
   {
-    m_executor.print_transaction(tx_hash, include_hex, include_json);
+    m_executor.print_transaction(tx_hash, include_metadata, include_hex, include_json);
   }
 
   return true;
@@ -365,22 +378,21 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
       nettype = cryptonote::TESTNET;
     }
   }
-
   if (info.is_subaddress)
   {
     tools::fail_msg_writer() << "subaddress for mining reward is not yet supported!" << std::endl;
     return true;
   }
   if(nettype != cryptonote::MAINNET)
-    std::cout << "Mining to a " << (nettype == cryptonote::TESTNET ? "testnet" : "stagenet") << "address, make sure this is intentional!" << std::endl;
-  uint64_t threads_count = 0;
-  bool do_background_mining = false;
-  bool ignore_battery = false;
+    std::cout << "Mining to a " << (nettype == cryptonote::TESTNET ? "testnet" : "stagenet") << " address, make sure this is intentional!" << std::endl;
+  uint64_t threads_count = 1;
+  bool do_background_mining = false;  
+  bool ignore_battery = false;  
   if(args.size() > 4)
   {
     return false;
   }
-
+  
   if(args.size() == 4)
   {
     if(args[3] == "true" || command_line::is_yes(args[3]) || args[3] == "1")
@@ -391,8 +403,8 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
     {
       return false;
     }
-  }
-
+  }  
+  
   if(args.size() >= 3)
   {
     if(args[2] == "true" || command_line::is_yes(args[2]) || args[2] == "1")
@@ -404,7 +416,7 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
       return false;
     }
   }
-
+  
   if(args.size() >= 2)
   {
     if (args[1] == "auto" || args[1] == "autodetect")
@@ -414,31 +426,13 @@ bool t_command_parser_executor::start_mining(const std::vector<std::string>& arg
     else
     {
       bool ok = epee::string_tools::get_xtype_from_string(threads_count, args[1]);
-      threads_count = (ok && 0 < threads_count) ? threads_count : 0;
+      threads_count = (ok && 0 < threads_count) ? threads_count : 1;
     }
   }
 
   m_executor.start_mining(info.address, threads_count, nettype, do_background_mining, ignore_battery);
 
   return true;
-}
-
-bool t_command_parser_executor::donate_mining(const std::vector<std::string>& args)
-{
-  if (args.empty())
-  {
-    std::cout << "expected: donate_level <blocks>" << std::endl;
-    return true;
-  }
-
-  uint32_t blocks_count = 0;
-  bool ok = epee::string_tools::get_xtype_from_string(blocks_count, args[0]);
-  blocks_count = ok ? blocks_count : 0;
-
-  if (blocks_count > 100)
-    blocks_count = 100;
-
-  return m_executor.donate_mining(blocks_count);
 }
 
 bool t_command_parser_executor::stop_mining(const std::vector<std::string>& args)
@@ -532,12 +526,12 @@ bool t_command_parser_executor::out_peers(const std::vector<std::string>& args)
 			set = true;
 		}
 	}
-
+	  
 	catch(const std::exception& ex) {
 		_erro("stoi exception");
 		return false;
 	}
-
+	
 	return m_executor.out_peers(set, limit);
 }
 
@@ -592,8 +586,7 @@ bool t_command_parser_executor::show_bans(const std::vector<std::string>& args)
 bool t_command_parser_executor::ban(const std::vector<std::string>& args)
 {
   if (args.size() != 1 && args.size() != 2) return false;
-  std::string ip = args[0];
-  time_t seconds = 0;
+  time_t seconds = P2P_IP_BLOCKTIME;
   if (args.size() > 1)
   {
     try
@@ -604,9 +597,56 @@ bool t_command_parser_executor::ban(const std::vector<std::string>& args)
     {
       return false;
     }
+    if (seconds == 0)
+    {
+      return false;
+    }
   }
+  if (boost::starts_with(args[0], "@"))
+  {
+    const std::string ban_list = args[0].substr(1);
 
-  return m_executor.ban(ip, seconds);
+    try
+    {
+      const boost::filesystem::path ban_list_path(ban_list);
+      boost::system::error_code ec;
+      if (!boost::filesystem::exists(ban_list_path, ec))
+      {
+        std::cout << "Can't find ban list file " + ban_list + " - " + ec.message() << std::endl;
+        return true;
+      }
+
+      bool ret = true;
+      std::ifstream ifs(ban_list_path.string());
+      for (std::string line; std::getline(ifs, line); )
+      {
+        auto subnet = net::get_ipv4_subnet_address(line);
+        if (subnet)
+        {
+          ret &= m_executor.ban(subnet->str(), seconds);
+          continue;
+        }
+        const expect<epee::net_utils::network_address> parsed_addr = net::get_network_address(line, 0);
+        if (parsed_addr)
+        {
+          ret &= m_executor.ban(parsed_addr->host_str(), seconds);
+          continue;
+        }
+        std::cout << "Invalid IP address or IPv4 subnet: " << line << std::endl;
+      }
+      return ret;
+    }
+    catch (const std::exception &e)
+    {
+      std::cout << "Error loading ban list: " << e.what() << std::endl;
+      return false;
+    }
+  }
+  else
+  {
+    const std::string ip = args[0];
+    return m_executor.ban(ip, seconds);
+  }
 }
 
 bool t_command_parser_executor::unban(const std::vector<std::string>& args)
@@ -696,27 +736,6 @@ bool t_command_parser_executor::print_coinbase_tx_sum(const std::vector<std::str
   return m_executor.print_coinbase_tx_sum(height, count);
 }
 
-bool t_command_parser_executor::print_generated_coins(const std::vector<std::string>& args)
-{
-  return m_executor.print_generated_coins();
-}
-
-bool t_command_parser_executor::min_version(const std::vector<std::string>& args)
-{
-  return m_executor.min_version();
-}
-
-bool t_command_parser_executor::print_tx_pubkey(const std::vector<std::string>& args)
-{
-  if(!args.size())
-  {
-    std::cout << "need tx extra" << std::endl;
-    return false;
-  }
-
-  return m_executor.print_tx_pubkey(args[0]);
-}
-
 bool t_command_parser_executor::alt_chain_info(const std::vector<std::string>& args)
 {
   if(args.size() > 1)
@@ -775,9 +794,13 @@ bool t_command_parser_executor::print_blockchain_dynamic_stats(const std::vector
 
 bool t_command_parser_executor::update(const std::vector<std::string>& args)
 {
-  if(args.size() != 0) return false;
+  if(args.size() != 1)
+  {
+    std::cout << "Exactly one parameter is needed: check, download, or update" << std::endl;
+    return false;
+  }
 
-  return m_executor.update();
+  return m_executor.update(args.front());
 }
 
 bool t_command_parser_executor::relay_tx(const std::vector<std::string>& args)
@@ -827,10 +850,16 @@ bool t_command_parser_executor::pop_blocks(const std::vector<std::string>& args)
   return false;
 }
 
+bool t_command_parser_executor::rpc_payments(const std::vector<std::string>& args)
+{
+  if (args.size() != 0) return false;
+
+  return m_executor.rpc_payments();
+}
+
 bool t_command_parser_executor::version(const std::vector<std::string>& args)
 {
-  std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << std::endl;
-  return true;
+  return m_executor.version();
 }
 
 bool t_command_parser_executor::prune_blockchain(const std::vector<std::string>& args)
@@ -872,13 +901,27 @@ bool t_command_parser_executor::set_bootstrap_daemon(const std::vector<std::stri
 
 bool t_command_parser_executor::flush_cache(const std::vector<std::string>& args)
 {
+  bool bad_txs = false, bad_blocks = false;
+  std::string arg;
+
   if (args.empty())
     goto show_list;
-  if (args[0] == "bad-txs")
-    return m_executor.flush_cache(true);
+
+  for (size_t i = 0; i < args.size(); ++i)
+  {
+    arg = args[i];
+    if (arg == "bad-txs")
+      bad_txs = true;
+    else if (arg == "bad-blocks")
+      bad_blocks = true;
+    else
+      goto show_list;
+  }
+  return m_executor.flush_cache(bad_txs, bad_blocks);
 
 show_list:
-  std::cout << "Cache type needed: bad-txs" << std::endl;
+  std::cout << "Invalid cache type: " << arg << std::endl;
+  std::cout << "Cache types: bad-txs bad-blocks" << std::endl;
   return true;
 }
 

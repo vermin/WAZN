@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -43,12 +43,12 @@
 #include <boost/range/adaptor/reversed.hpp>
 
 
+#include "crypto/crypto.h"
 #include "cryptonote_config.h"
 #include "net/enums.h"
 #include "net/local_ip.h"
 #include "p2p_protocol_defs.h"
 #include "syncobj.h"
-#include "crypto/crypto.h"
 
 namespace nodetool
 {
@@ -102,18 +102,18 @@ namespace nodetool
     bool init(peerlist_types&& peers, bool allow_local_ip);
     size_t get_white_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_white.size();}
     size_t get_gray_peers_count(){CRITICAL_REGION_LOCAL(m_peerlist_lock); return m_peers_gray.size();}
-    bool merge_peerlist(const std::vector<peerlist_entry>& outer_bs);
+    bool merge_peerlist(const std::vector<peerlist_entry>& outer_bs, const std::function<bool(const peerlist_entry&)> &f = NULL);
     bool get_peerlist_head(std::vector<peerlist_entry>& bs_head, bool anonymize, uint32_t depth = P2P_DEFAULT_PEERS_IN_HANDSHAKE);
     void get_peerlist(std::vector<peerlist_entry>& pl_gray, std::vector<peerlist_entry>& pl_white);
     void get_peerlist(peerlist_types& peers);
     bool get_white_peer_by_index(peerlist_entry& p, size_t i);
     bool get_gray_peer_by_index(peerlist_entry& p, size_t i);
     template<typename F> bool foreach(bool white, const F &f);
+    void evict_host_from_white_peerlist(const peerlist_entry& pr);
     bool append_with_peer_white(const peerlist_entry& pr);
     bool append_with_peer_gray(const peerlist_entry& pr);
     bool append_with_peer_anchor(const anchor_peerlist_entry& ple);
-    bool set_peer_just_seen(peerid_type peer, const epee::net_utils::network_address& addr, uint32_t pruning_seed, uint16_t rpc_port);
-    bool set_peer_unreachable(const peerlist_entry& pr);
+    bool set_peer_just_seen(peerid_type peer, const epee::net_utils::network_address& addr, uint32_t pruning_seed, uint16_t rpc_port, uint32_t rpc_credits_per_hash);
     bool is_host_allowed(const epee::net_utils::network_address &address);
     bool get_random_gray_peer(peerlist_entry& pe);
     bool remove_from_peer_gray(const peerlist_entry& pe);
@@ -214,12 +214,13 @@ namespace nodetool
   }
   //--------------------------------------------------------------------------------------------------
   inline 
-  bool peerlist_manager::merge_peerlist(const std::vector<peerlist_entry>& outer_bs)
+  bool peerlist_manager::merge_peerlist(const std::vector<peerlist_entry>& outer_bs, const std::function<bool(const peerlist_entry&)> &f)
   {
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
     for(const peerlist_entry& be:  outer_bs)
     {
-      append_with_peer_gray(be);
+      if (!f || f(be))
+        append_with_peer_gray(be);
     }
     // delete extra elements
     trim_gray_peerlist();    
@@ -270,19 +271,19 @@ namespace nodetool
     peers_indexed::index<by_time>::type& by_time_index=m_peers_white.get<by_time>();
     uint32_t cnt = 0;
 
-    // picks a random set of peers within the first 120%, rather than a set of the first 100%.
+    // picks a random set of peers within the whole set, rather pick the first depth elements.
     // The intent is that if someone asks twice, they can't easily tell:
     // - this address was not in the first list, but is in the second, so the only way this can be
     // is if its last_seen was recently reset, so this means the target node recently had a new
     // connection to that address
     // - this address was in the first list, and not in the second, which means either the address
-    // was moved to the gray list (if it's not accessibe, which the attacker can check if
+    // was moved to the gray list (if it's not accessible, which the attacker can check if
     // the address accepts incoming connections) or it was the oldest to still fit in the 250 items,
     // so its last_seen is old.
     //
     // See Cao, Tong et al. "Exploring the Monero Peer-to-Peer Network". https://eprint.iacr.org/2019/411
     //
-    const uint32_t pick_depth = anonymize ? depth + depth / 5 : depth;
+    const uint32_t pick_depth = anonymize ? m_peers_white.size() : depth;
     bs_head.reserve(pick_depth);
     for(const peers_indexed::value_type& vl: boost::adaptors::reverse(by_time_index))
     {
@@ -316,7 +317,7 @@ namespace nodetool
   }
   //--------------------------------------------------------------------------------------------------
   inline
-  bool peerlist_manager::set_peer_just_seen(peerid_type peer, const epee::net_utils::network_address& addr, uint32_t pruning_seed, uint16_t rpc_port)
+  bool peerlist_manager::set_peer_just_seen(peerid_type peer, const epee::net_utils::network_address& addr, uint32_t pruning_seed, uint16_t rpc_port, uint32_t rpc_credits_per_hash)
   {
     TRY_ENTRY();
     CRITICAL_REGION_LOCAL(m_peerlist_lock);
@@ -327,6 +328,7 @@ namespace nodetool
     ple.last_seen = time(NULL);
     ple.pruning_seed = pruning_seed;
     ple.rpc_port = rpc_port;
+    ple.rpc_credits_per_hash = rpc_credits_per_hash;
     return append_with_peer_white(ple);
     CATCH_ENTRY_L0("peerlist_manager::set_peer_just_seen()", false);
   }
@@ -344,6 +346,7 @@ namespace nodetool
     if(by_addr_it_wt == m_peers_white.get<by_addr>().end())
     {
       //put new record into white list
+      evict_host_from_white_peerlist(ple);
       m_peers_white.insert(ple);
       trim_white_peerlist();
     }else

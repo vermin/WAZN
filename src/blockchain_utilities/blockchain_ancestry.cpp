@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -287,7 +285,7 @@ static bool get_output_txid(ancestry_state_t &state, BlockchainDB *db, uint64_t 
     return true;
   }
 
-  const output_data_t od = db->get_output_key_only(amount, offset);
+  const output_data_t od = db->get_output_key(amount, offset, false);
   cryptonote::block b;
   if (!get_block_from_height(state, db, od.height, b))
     return false;

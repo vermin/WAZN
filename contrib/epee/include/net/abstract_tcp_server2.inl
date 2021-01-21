@@ -32,7 +32,6 @@
 
 
 
-#include <boost/bind.hpp>
 #include <boost/foreach.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/chrono.hpp>
@@ -208,17 +207,16 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     buffer_ssl_init_fill = 0;
     if (is_income && m_ssl_support != epee::net_utils::ssl_support_t::e_ssl_support_disabled)
       socket().async_receive(boost::asio::buffer(buffer_),
-        boost::asio::socket_base::message_peek,
         strand_.wrap(
-          boost::bind(&connection<t_protocol_handler>::handle_receive, self,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred)));
+          std::bind(&connection<t_protocol_handler>::handle_receive, self,
+            std::placeholders::_1,
+            std::placeholders::_2)));
     else
       async_read_some(boost::asio::buffer(buffer_),
         strand_.wrap(
-          boost::bind(&connection<t_protocol_handler>::handle_read, self,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred)));
+          std::bind(&connection<t_protocol_handler>::handle_read, self,
+            std::placeholders::_1,
+            std::placeholders::_2)));
 #if !defined(_WIN32) || !defined(__i686)
 	// not supported before Windows7, too lazy for runtime check
 	// Just exclude for 32bit windows builds
@@ -335,6 +333,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     TRY_ENTRY();
     //_info("[sock " << socket().native_handle() << "] Async read calledback.");
     
+    if (m_was_shutdown)
+        return;
+
     if (!e)
     {
         double current_speed_down;
@@ -361,10 +362,13 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 					CRITICAL_REGION_LOCAL(	epee::net_utils::network_throttle_manager::m_lock_get_global_throttle_in );
 					delay = epee::net_utils::network_throttle_manager::get_global_throttle_in().get_sleep_time_after_tick( bytes_transferred );
 				}
+
+				if (m_was_shutdown)
+					return;
 				
 				delay *= 0.5;
-				if (delay > 0) {
-					long int ms = (long int)(delay * 100);
+				long int ms = (long int)(delay * 100);
+				if (ms > 0) {
 					reset_timer(boost::posix_time::milliseconds(ms + 1), true);
 					boost::this_thread::sleep_for(boost::chrono::milliseconds(ms));
 				}
@@ -432,6 +436,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     std::size_t bytes_transferred)
   {
     TRY_ENTRY();
+
+    if (m_was_shutdown) return;
+
     if (e)
     {
       // offload the error case
@@ -439,13 +446,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       return;
     }
 
-    reset_timer(get_timeout_from_bytes_read(bytes_transferred), false);
-
     buffer_ssl_init_fill += bytes_transferred;
-    if (buffer_ssl_init_fill <= get_ssl_magic_size())
+    MTRACE("we now have " << buffer_ssl_init_fill << "/" << get_ssl_magic_size() << " bytes needed to detect SSL");
+    if (buffer_ssl_init_fill < get_ssl_magic_size())
     {
       socket().async_receive(boost::asio::buffer(buffer_.data() + buffer_ssl_init_fill, buffer_.size() - buffer_ssl_init_fill),
-        boost::asio::socket_base::message_peek,
         strand_.wrap(
           boost::bind(&connection<t_protocol_handler>::handle_receive, connection<t_protocol_handler>::shared_from_this(),
             boost::asio::placeholders::error,
@@ -471,7 +476,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
     if (m_ssl_support == epee::net_utils::ssl_support_t::e_ssl_support_enabled)
     {
       // Handshake
-      if (!handshake(boost::asio::ssl::stream_base::server))
+      if (!handshake(boost::asio::ssl::stream_base::server, boost::asio::const_buffer(buffer_.data(), buffer_ssl_init_fill)))
       {
         MERROR("SSL handshake failed");
         boost::interprocess::ipcdetail::atomic_write32(&m_want_close_connection, 1);
@@ -485,6 +490,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
           shutdown();
         return;
       }
+    }
+    else
+    {
+      handle_read(e, buffer_ssl_init_fill);
+      return;
     }
 
     async_read_some(boost::asio::buffer(buffer_),
@@ -652,6 +662,8 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         boost::this_thread::sleep(boost::posix_time::milliseconds( ms ) );
         m_send_que_lock.lock();
         _dbg1("sleep for queue: " << ms);
+	if (m_was_shutdown)
+		return false;
 
         if (retry > retry_limit) {
             MWARNING("send que size is more than ABSTRACT_SERVER_SEND_QUE_MAX_COUNT(" << ABSTRACT_SERVER_SEND_QUE_MAX_COUNT << "), shutting down connection");
@@ -688,7 +700,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         reset_timer(get_default_timeout(), false);
             async_write(boost::asio::buffer(m_send_que.front().data(), size_now ) ,
                                  strand_.wrap(
-                                 boost::bind(&connection<t_protocol_handler>::handle_write, self, _1, _2)
+                                 std::bind(&connection<t_protocol_handler>::handle_write, self, std::placeholders::_1, std::placeholders::_2)
                                  )
                                  );
         //_dbg3("(chunk): " << size_now);
@@ -721,7 +733,9 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   boost::posix_time::milliseconds connection<t_protocol_handler>::get_timeout_from_bytes_read(size_t bytes)
   {
     boost::posix_time::milliseconds ms = (boost::posix_time::milliseconds)(unsigned)(bytes * TIMEOUT_EXTRA_MS_PER_BYTE);
-    ms += m_timer.expires_from_now();
+    const auto cur = m_timer.expires_from_now().total_milliseconds();
+    if (cur > 0)
+      ms += (boost::posix_time::milliseconds)cur;
     if (ms > get_default_timeout())
       ms = get_default_timeout();
     return ms;
@@ -747,7 +761,13 @@ PRAGMA_WARNING_DISABLE_VS(4355)
   template<class t_protocol_handler>
   void connection<t_protocol_handler>::reset_timer(boost::posix_time::milliseconds ms, bool add)
   {
-    MTRACE("Setting " << ms << " expiry");
+    const auto tms = ms.total_milliseconds();
+    if (tms < 0 || (add && tms == 0))
+    {
+      MWARNING("Ignoring negative timeout " << ms);
+      return;
+    }
+    MTRACE((add ? "Adding" : "Setting") << " " << ms << " expiry");
     auto self = safe_shared_from_this();
     if(!self)
     {
@@ -760,7 +780,11 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       return;
     }
     if (add)
-      ms += m_timer.expires_from_now();
+    {
+      const auto cur = m_timer.expires_from_now().total_milliseconds();
+      if (cur > 0)
+        ms += (boost::posix_time::milliseconds)cur;
+    }
     m_timer.expires_from_now(ms);
     m_timer.async_wait([=](const boost::system::error_code& ec)
     {
@@ -881,7 +905,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
 		CHECK_AND_ASSERT_MES( size_now == m_send_que.front().size(), void(), "Unexpected queue size");
 		  async_write(boost::asio::buffer(m_send_que.front().data(), size_now) , 
            strand_.wrap(
-            boost::bind(&connection<t_protocol_handler>::handle_write, connection<t_protocol_handler>::shared_from_this(), _1, _2)
+            std::bind(&connection<t_protocol_handler>::handle_write, connection<t_protocol_handler>::shared_from_this(), std::placeholders::_1, std::placeholders::_2)
 			  )
           );
       //_dbg3("(normal)" << size_now);
@@ -1000,8 +1024,8 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       MDEBUG("start accept (IPv4)");
       new_connection_.reset(new connection<t_protocol_handler>(io_service_, m_state, m_connection_type, m_state->ssl_options().support));
       acceptor_.async_accept(new_connection_->socket(),
-      boost::bind(&boosted_tcp_server<t_protocol_handler>::handle_accept_ipv4, this,
-      boost::asio::placeholders::error));
+	boost::bind(&boosted_tcp_server<t_protocol_handler>::handle_accept_ipv4, this,
+	boost::asio::placeholders::error));
     }
     catch (const std::exception &e)
     {
@@ -1013,7 +1037,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
       MERROR("Failed to bind IPv4: " << ipv4_failed);
       if (require_ipv4)
       {
-        throw std::runtime_error("Failed to IPv4 address. Perhaps there is another instance running?");
+        throw std::runtime_error("Failed to bind IPv4 (set to required)");
       }
     }
 
@@ -1051,7 +1075,7 @@ PRAGMA_WARNING_DISABLE_VS(4355)
         MERROR("Failed to bind IPv6: " << ipv6_failed);
         if (ipv4_failed != "")
         {
-          throw std::runtime_error("Failed to bind IPv4 and IPv6. Perhaps there is another instance running?");
+          throw std::runtime_error("Failed to bind IPv4 and IPv6");
         }
       }
 
@@ -1391,7 +1415,7 @@ POP_WARNINGS
       shared_context->connect_mut.lock(); shared_context->ec = ec_; shared_context->cond.notify_one(); shared_context->connect_mut.unlock();
     };
 
-    sock_.async_connect(remote_endpoint, boost::bind<void>(connect_callback, _1, local_shared_context));
+    sock_.async_connect(remote_endpoint, std::bind<void>(connect_callback, std::placeholders::_1, local_shared_context));
     while(local_shared_context->ec == boost::asio::error::would_block)
     {
       bool r = local_shared_context->cond.timed_wait(lock, boost::get_system_time() + boost::posix_time::milliseconds(conn_timeout));

@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -32,12 +30,10 @@
 
 #include <sstream>
 #include <numeric>
-#include <boost/utility/value_init.hpp>
 #include <boost/interprocess/detail/atomic.hpp>
 #include <boost/algorithm/string.hpp>
 #include "misc_language.h"
 #include "syncobj.h"
-#include "crypto/hash.h"
 #include "cryptonote_basic_impl.h"
 #include "cryptonote_format_utils.h"
 #include "cryptonote_core/cryptonote_tx_utils.h"
@@ -66,7 +62,9 @@
   #include <devstat.h>
   #include <errno.h>
   #include <fcntl.h>
+#if defined(__amd64__) || defined(__i386__) || defined(__x86_64__)
   #include <machine/apm_bios.h>
+#endif
   #include <stdio.h>
   #include <sys/resource.h>
   #include <sys/sysctl.h>
@@ -86,36 +84,35 @@ using namespace epee;
 #include "miner.h"
 
 
+extern "C" void slow_hash_allocate_state();
+extern "C" void slow_hash_free_state();
 namespace cryptonote
 {
+
   namespace
   {
     const command_line::arg_descriptor<std::string> arg_extra_messages =  {"extra-messages-file", "Specify file for extra messages to include into coinbase transactions", "", true};
     const command_line::arg_descriptor<std::string> arg_start_mining =    {"start-mining", "Specify wallet address to mining for", "", true};
-    const command_line::arg_descriptor<uint16_t>    arg_donate_mining =    {"donate-level", "Specify a percentage of blocks to mine to the development wallet", miner::MINING_DEFAULT_DONATION_LEVEL, true};
     const command_line::arg_descriptor<uint32_t>      arg_mining_threads =  {"mining-threads", "Specify mining threads count", 0, true};
     const command_line::arg_descriptor<bool>        arg_bg_mining_enable =  {"bg-mining-enable", "enable background mining", true, true};
-    const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};
+    const command_line::arg_descriptor<bool>        arg_bg_mining_ignore_battery =  {"bg-mining-ignore-battery", "if true, assumes plugged in when unable to query system power status", false, true};    
     const command_line::arg_descriptor<uint64_t>    arg_bg_mining_min_idle_interval_seconds =  {"bg-mining-min-idle-interval", "Specify min lookback interval in seconds for determining idle state", miner::BACKGROUND_MINING_DEFAULT_MIN_IDLE_INTERVAL_IN_SECONDS, true};
     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_idle_threshold_percentage =  {"bg-mining-idle-threshold", "Specify minimum avg idle percentage over lookback interval", miner::BACKGROUND_MINING_DEFAULT_IDLE_THRESHOLD_PERCENTAGE, true};
     const command_line::arg_descriptor<uint16_t>     arg_bg_mining_miner_target_percentage =  {"bg-mining-miner-target", "Specify maximum percentage cpu use by miner(s)", miner::BACKGROUND_MINING_DEFAULT_MINING_TARGET_PERCENTAGE, true};
   }
 
 
-  miner::miner(i_miner_handler* phandler, Blockchain* pbc):m_stop(1),
+  miner::miner(i_miner_handler* phandler, const get_block_hash_t &gbh):m_stop(1),
     m_template{},
     m_template_no(0),
     m_diffic(0),
     m_thread_index(0),
     m_phandler(phandler),
-    m_pbc(pbc),
+    m_gbh(gbh),
     m_height(0),
     m_threads_active(0),
     m_pausers_count(0),
     m_threads_total(0),
-    m_donate_percent(MINING_DEFAULT_DONATION_LEVEL),
-    m_donate_counter(0),
-    m_donating(false),
     m_starter_nonce(0),
     m_last_hr_merge_time(0),
     m_hashes(0),
@@ -139,7 +136,7 @@ namespace cryptonote
     catch (...) { /* ignore */ }
   }
   //-----------------------------------------------------------------------------------------------------
-  bool miner::set_block_template(const block& bl, const uint64_t& di, uint64_t height, uint64_t block_reward)
+  bool miner::set_block_template(const block& bl, const difficulty_type& di, uint64_t height, uint64_t block_reward)
   {
     CRITICAL_REGION_LOCAL(m_template_lock);
     m_template = bl;
@@ -162,7 +159,7 @@ namespace cryptonote
   bool miner::request_block_template()
   {
     block bl;
-    uint64_t di = AUTO_VAL_INIT(di);
+    difficulty_type di = AUTO_VAL_INIT(di);
     uint64_t height = AUTO_VAL_INIT(height);
     uint64_t expected_reward; //only used for RPC calls - could possibly be useful here too?
 
@@ -172,72 +169,14 @@ namespace cryptonote
       extra_nonce = m_extra_messages[m_config.current_extra_message_index];
     }
 
-    // Count the number of distinct block template heights the miner targets,
-    // and use this count as the basis for donation percentages. This method
-    // ignores out-of-band updates to the chain which did not cause the miner
-    // to target a new block height, as the miner could not possibly have found
-    // blocks at these unused heights.
-    bool donate_block_changed;
-    bool donate;
-    bool show_donation_msg;
-    check_donate:
-    CRITICAL_REGION_BEGIN(m_template_lock);
-    height = m_phandler->get_current_blockchain_height();
-    if(height > m_height)
-    {
-      m_donate_counter++;
-      if(m_donate_counter > 100)
-      {
-        m_donate_counter = 0;
-      }
-      donate_block_changed = true;
-
-      const uint8_t threshold = (uint8_t)100U - m_donate_percent;
-      donate = (m_donate_counter > threshold);
-      if(donate != m_donating)
-      {
-        m_donating = donate;
-        show_donation_msg = true;
-      }
-      else
-      {
-        show_donation_msg = false;
-      }
-    }
-    else
-    {
-      donate_block_changed = false;
-      donate = m_donating;
-      show_donation_msg = false;
-    }
-    CRITICAL_REGION_END();
-
-    account_public_address adr = donate ? m_donate_mine_address : m_mine_address;
-    uint64_t tpl_height;
-    if(!m_phandler->get_block_template(bl, adr, di, tpl_height, expected_reward, extra_nonce))
+    uint64_t seed_height;
+    crypto::hash seed_hash;
+    if(!m_phandler->get_block_template(bl, m_mine_address, di, height, expected_reward, extra_nonce, seed_height, seed_hash))
     {
       LOG_ERROR("Failed to get_block_template(), stopping mining");
       return false;
     }
-    if(tpl_height > height && !donate_block_changed)
-    {
-      // The block template height differs from the chain height polled for
-      // donation accounting. If the donate block counter has already been
-      // incremented, ignore the change in the template, as this block is
-      // already considered new; otherwise, re-run the donation logic,
-      // as a donation may now be due, or no longer due.
-      goto check_donate;
-    }
-    set_block_template(bl, di, tpl_height, expected_reward);
-
-    if(show_donation_msg)
-    {
-      if(donate)
-        MGUSER_YELLOW("Mining to the dev fund for the next " << (unsigned)m_donate_percent << " blocks");
-      else
-        MGUSER_YELLOW("Resumed mining to your regular mining address");
-    }
-
+    set_block_template(bl, di, height, expected_reward);
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -346,10 +285,9 @@ namespace cryptonote
   {
     command_line::add_arg(desc, arg_extra_messages);
     command_line::add_arg(desc, arg_start_mining);
-    command_line::add_arg(desc, arg_donate_mining);
     command_line::add_arg(desc, arg_mining_threads);
     command_line::add_arg(desc, arg_bg_mining_enable);
-    command_line::add_arg(desc, arg_bg_mining_ignore_battery);
+    command_line::add_arg(desc, arg_bg_mining_ignore_battery);    
     command_line::add_arg(desc, arg_bg_mining_min_idle_interval_seconds);
     command_line::add_arg(desc, arg_bg_mining_idle_threshold_percentage);
     command_line::add_arg(desc, arg_bg_mining_miner_target_percentage);
@@ -381,17 +319,16 @@ namespace cryptonote
       MINFO("Loaded " << m_extra_messages.size() << " extra messages, current index " << m_config.current_extra_message_index);
     }
 
-    address_parse_info info;
-
     if(command_line::has_arg(vm, arg_start_mining))
     {
+      address_parse_info info;
       if(!cryptonote::get_account_address_from_str(info, nettype, command_line::get_arg(vm, arg_start_mining)) || info.is_subaddress)
       {
         LOG_ERROR("Target account address " << command_line::get_arg(vm, arg_start_mining) << " has wrong format, starting daemon canceled");
         return false;
       }
       m_mine_address = info.address;
-      m_threads_total = 0;
+      m_threads_total = 1;
       m_do_mining = true;
       if(command_line::has_arg(vm, arg_mining_threads))
       {
@@ -399,27 +336,12 @@ namespace cryptonote
       }
     }
 
-    if(command_line::has_arg(vm, arg_donate_mining))
-    {
-      if(!set_donate_percent(command_line::get_arg(vm, arg_donate_mining)))
-      {
-        MGUSER_RED("Invalid donation percentage (" << command_line::get_arg(vm, arg_donate_mining) << "), starting miner canceled");
-        return false;
-      }
-    }
-    if(!cryptonote::get_account_address_from_str(info, nettype, DONATION_ADDR))
-    {
-      LOG_ERROR("Invalid donation address, starting daemon canceled");
-      return false;
-    }
-    m_donate_mine_address = info.address;
-
     // Background mining parameters
     // Let init set all parameters even if background mining is not enabled, they can start later with params set
     if(command_line::has_arg(vm, arg_bg_mining_enable))
       set_is_background_mining_enabled( command_line::get_arg(vm, arg_bg_mining_enable) );
     if(command_line::has_arg(vm, arg_bg_mining_ignore_battery))
-      set_ignore_battery( command_line::get_arg(vm, arg_bg_mining_ignore_battery) );
+      set_ignore_battery( command_line::get_arg(vm, arg_bg_mining_ignore_battery) );      
     if(command_line::has_arg(vm, arg_bg_mining_min_idle_interval_seconds))
       set_min_idle_seconds( command_line::get_arg(vm, arg_bg_mining_min_idle_interval_seconds) );
     if(command_line::has_arg(vm, arg_bg_mining_idle_threshold_percentage))
@@ -475,16 +397,16 @@ namespace cryptonote
     boost::interprocess::ipcdetail::atomic_write32(&m_thread_index, 0);
     set_is_background_mining_enabled(do_background);
     set_ignore_battery(ignore_battery);
-
+    
     for(size_t i = 0; i != m_threads_total; i++)
     {
       m_threads.push_back(boost::thread(m_attrs, boost::bind(&miner::worker_thread, this)));
     }
 
     if (threads_count == 0)
-      MGUSER_CYAN("Mining has started, autodetecting optimal number of threads, good luck!" );
+      MINFO("Mining has started, autodetecting optimal number of threads, good luck!" );
     else
-      MGUSER_CYAN("Mining has started with " << threads_count << " threads, good luck!" );
+      MINFO("Mining has started with " << threads_count << " threads, good luck!" );
 
     if( get_is_background_mining_enabled() )
     {
@@ -495,11 +417,6 @@ namespace cryptonote
     if(get_ignore_battery())
     {
       MINFO("Ignoring battery");
-    }
-
-    if(m_donate_percent > 0)
-    {
-      MGUSER_YELLOW("Mining set to donate " << (unsigned)m_donate_percent << "% of blocks to the dev fund. Thank you for your support.");
     }
 
     return true;
@@ -519,6 +436,7 @@ namespace cryptonote
   {
     boost::interprocess::ipcdetail::atomic_write32(&m_stop, 1);
   }
+  extern "C" void rx_stop_mining(void);
   //-----------------------------------------------------------------------------------------------------
   bool miner::stop()
   {
@@ -535,7 +453,7 @@ namespace cryptonote
     send_stop_signal();
 
     // In case background mining was active and the miner threads are waiting
-    // on the background miner to signal start.
+    // on the background miner to signal start. 
     while (m_threads_active > 0)
     {
       m_is_background_mining_started_cond.notify_all();
@@ -551,7 +469,25 @@ namespace cryptonote
     MINFO("Mining has been stopped, " << m_threads.size() << " finished" );
     m_threads.clear();
     m_threads_autodetect.clear();
+    rx_stop_mining();
     return true;
+  }
+  //-----------------------------------------------------------------------------------------------------
+  bool miner::find_nonce_for_given_block(const get_block_hash_t &gbh, block& bl, const difficulty_type& diffic, uint64_t height, const crypto::hash *seed_hash)
+  {
+    for(; bl.nonce != std::numeric_limits<uint32_t>::max(); bl.nonce++)
+    {
+      crypto::hash h;
+      gbh(bl, height, seed_hash, diffic <= 100 ? 0 : tools::get_max_concurrency(), h);
+
+      if(check_hash(h, diffic))
+      {
+        bl.invalidate_hashes();
+        return true;
+      }
+    }
+    bl.invalidate_hashes();
+    return false;
   }
   //-----------------------------------------------------------------------------------------------------
   void miner::on_synchronized()
@@ -592,15 +528,10 @@ namespace cryptonote
     MGINFO("Miner thread was started ["<< th_local_index << "]");
     uint32_t nonce = m_starter_nonce + th_local_index;
     uint64_t height = 0;
-    uint64_t local_diff = 0;
+    difficulty_type local_diff = 0;
     uint32_t local_template_ver = 0;
-    crypto::cn_hash_context_t *hash_context = crypto::cn_hash_context_create();
-    if (hash_context == NULL)
-    {
-      MERROR("Unable to allocate hash context, terminating miner thread");
-      return false;
-    }
     block b;
+    slow_hash_allocate_state();
     ++m_threads_active;
     while(!m_stop)
     {
@@ -615,12 +546,12 @@ namespace cryptonote
         while( !m_is_background_mining_started )
         {
           MGINFO("background mining is enabled, but not started, waiting until start triggers");
-          boost::unique_lock<boost::mutex> started_lock( m_is_background_mining_started_mutex );
+          boost::unique_lock<boost::mutex> started_lock( m_is_background_mining_started_mutex );        
           m_is_background_mining_started_cond.wait( started_lock );
           if( m_stop ) break;
         }
-
-        if( m_stop ) continue;
+        
+        if( m_stop ) continue;         
       }
 
       if(local_template_ver != m_template_no)
@@ -643,13 +574,13 @@ namespace cryptonote
 
       b.nonce = nonce;
       crypto::hash h;
-      get_block_longhash(hash_context, m_pbc, b, h, height);
+      m_gbh(b, height, NULL, tools::get_max_concurrency(), h);
 
       if(check_hash(h, local_diff))
       {
         //we lucky!
         ++m_config.current_extra_message_index;
-        MGUSER_GREEN("Found block at height: " << height);
+        MGINFO_GREEN("Found block " << get_block_hash(b) << " at height " << height << " for difficulty: " << local_diff);
         cryptonote::block_verification_context bvc;
         if(!m_phandler->handle_block_found(b, bvc) || !bvc.m_added_to_main_chain)
         {
@@ -665,16 +596,9 @@ namespace cryptonote
       ++m_hashes;
       ++m_total_hashes;
     }
-    crypto::cn_hash_context_free(hash_context);
+    slow_hash_free_state();
     MGINFO("Miner thread stopped ["<< th_local_index << "]");
     --m_threads_active;
-    return true;
-  }
-  //-----------------------------------------------------------------------------------------------------
-  bool miner::set_donate_percent(uint8_t donate_percent)
-  {
-    if (donate_percent > 100) return false;
-    m_donate_percent = donate_percent;
     return true;
   }
   //-----------------------------------------------------------------------------------------------------
@@ -686,7 +610,7 @@ namespace cryptonote
   bool miner::get_ignore_battery() const
   {
     return m_ignore_battery;
-  }
+  }  
   //-----------------------------------------------------------------------------------------------------
   /**
   * This has differing behaviour depending on if mining has been started/etc.
@@ -757,10 +681,10 @@ namespace cryptonote
       LOG_ERROR("get_system_times call failed, background mining will NOT work!");
       return false;
     }
-
+    
     while(!m_stop)
     {
-
+        
       try
       {
         // Commenting out the below since we're going with privatizing the bg mining enabled
@@ -773,19 +697,19 @@ namespace cryptonote
         // you've clicked "start mining". There's still an issue here where if background
         // mining is disabled when start is called, this thread is never created, and so
         // enabling after does nothing, something I have to fix in the future. However,
-        // this should take care of the case where mining is started with bg-enabled,
+        // this should take care of the case where mining is started with bg-enabled, 
         // and then the user decides to un-check background mining, and just do
-        // regular full-speed mining. I might just be over-doing it and thinking up
+        // regular full-speed mining. I might just be over-doing it and thinking up 
         // non-existant use-cases, so if the consensus is to simplify, we can remove all this fluff.
         /*
         while( !m_is_background_mining_enabled )
         {
           MGINFO("background mining is disabled, waiting until enabled!");
-          boost::unique_lock<boost::mutex> enabled_lock( m_is_background_mining_enabled_mutex );
+          boost::unique_lock<boost::mutex> enabled_lock( m_is_background_mining_enabled_mutex );        
           m_is_background_mining_enabled_cond.wait( enabled_lock );
-        }
-        */
-
+        } 
+        */       
+        
         // If we're already mining, then sleep for the miner monitor interval.
         // If we're NOT mining, then sleep for the idle monitor interval
         uint64_t sleep_for_seconds = BACKGROUND_MINING_MINER_MONITOR_INVERVAL_IN_SECONDS;
@@ -811,7 +735,7 @@ namespace cryptonote
       if( m_is_background_mining_started )
       {
         // figure out if we need to stop, and monitor mining usage
-
+        
         // If we get here, then previous values are initialized.
         // Let's get some current data for comparison.
 
@@ -856,7 +780,7 @@ namespace cryptonote
           m_miner_extra_sleep = std::max( new_miner_extra_sleep , (int64_t)5 );
           MDEBUG("m_miner_extra_sleep " << m_miner_extra_sleep);
         }
-
+        
         prev_total_time = current_total_time;
         prev_idle_time = current_idle_time;
       }
@@ -955,7 +879,7 @@ namespace cryptonote
 
       mach_msg_type_number_t count;
       kern_return_t status;
-      host_cpu_load_info_data_t stats;
+      host_cpu_load_info_data_t stats;      
       count = HOST_CPU_LOAD_INFO_COUNT;
       status = host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&stats, &count);
       if(status != KERN_SUCCESS)
@@ -965,7 +889,7 @@ namespace cryptonote
 
       idle_time = stats.cpu_ticks[CPU_STATE_IDLE];
       total_time = idle_time + stats.cpu_ticks[CPU_STATE_USER] + stats.cpu_ticks[CPU_STATE_SYSTEM];
-
+      
       return true;
 
     #elif defined(__FreeBSD__)
@@ -1030,12 +954,12 @@ namespace cryptonote
 
     return false; // unsupported system
   }
-  //-----------------------------------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------------------------------  
   uint8_t miner::get_percent_of_total(uint64_t other, uint64_t total)
   {
-    return (uint8_t)( ceil( (other * 1.f / total * 1.f) * 100) );
+    return (uint8_t)( ceil( (other * 1.f / total * 1.f) * 100) );    
   }
-  //-----------------------------------------------------------------------------------------------------
+  //-----------------------------------------------------------------------------------------------------    
   boost::logic::tribool miner::on_battery_power()
   {
     #ifdef _WIN32
@@ -1046,8 +970,8 @@ namespace cryptonote
         return boost::logic::tribool(power_status.ACLineStatus != 1);
     	}
 
-    #elif defined(__APPLE__)
-
+    #elif defined(__APPLE__) 
+      
       #if TARGET_OS_MAC && (!defined(MAC_OS_X_VERSION_MIN_REQUIRED) || MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7)
         return boost::logic::tribool(IOPSGetTimeRemainingEstimate() != kIOPSTimeRemainingUnlimited);
       #else
@@ -1211,7 +1135,7 @@ namespace cryptonote
       }
       return boost::logic::tribool(ac == 0);
     #endif
-
+    
     LOG_ERROR("couldn't query power status");
     return boost::logic::tribool(boost::logic::indeterminate);
   }

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -66,6 +66,8 @@ Wallet *WalletManagerImpl::openWallet(const std::string &path, const std::string
     }
 
     wallet->open(path, password);
+    //Refresh addressBook
+    wallet->addressBook()->refresh(); 
     return wallet;
 }
 
@@ -338,6 +340,44 @@ std::string WalletManagerImpl::resolveOpenAlias(const std::string &address, bool
     if (addresses.empty())
         return "";
     return addresses.front();
+}
+
+std::tuple<bool, std::string, std::string, std::string, std::string> WalletManager::checkUpdates(
+    const std::string &software,
+    std::string subdir,
+    const char *buildtag/* = nullptr*/,
+    const char *current_version/* = nullptr*/)
+{
+    if (buildtag == nullptr)
+    {
+#ifdef BUILD_TAG
+        static const char buildtag_default[] = BOOST_PP_STRINGIZE(BUILD_TAG);
+#else
+        static const char buildtag_default[] = "source";
+        // Override the subdir string when built from source
+        subdir = "source";
+#endif
+        buildtag = buildtag_default;
+    }
+
+    std::string version, hash;
+    MDEBUG("Checking for a new " << software << " version for " << buildtag);
+    if (!tools::check_updates(software, buildtag, version, hash))
+      return std::make_tuple(false, "", "", "", "");
+
+    if (tools::vercmp(version.c_str(), current_version != nullptr ? current_version : MONERO_VERSION) > 0)
+    {
+      std::string user_url = tools::get_update_url(software, subdir, buildtag, version, true);
+      std::string auto_url = tools::get_update_url(software, subdir, buildtag, version, false);
+      MGINFO("Version " << version << " of " << software << " for " << buildtag << " is available: " << user_url << ", SHA256 hash " << hash);
+      return std::make_tuple(true, version, hash, user_url, auto_url);
+    }
+    return std::make_tuple(false, "", "", "", "");
+}
+
+bool WalletManagerImpl::setProxy(const std::string &address)
+{
+    return m_http_client.set_proxy(address);
 }
 
 ///////////////////// WalletManagerFactory implementation //////////////////////

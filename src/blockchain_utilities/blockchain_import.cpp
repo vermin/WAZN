@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -39,6 +37,7 @@
 #include "misc_log_ex.h"
 #include "bootstrap_file.h"
 #include "bootstrap_serialization.h"
+#include "blocks/blocks.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "serialization/binary_utils.h" // dump_binary(), parse_binary()
 #include "serialization/json_utils.h" // dump_json()
@@ -79,6 +78,19 @@ namespace po = boost::program_options;
 
 using namespace cryptonote;
 using namespace epee;
+
+// db_mode: safe, fast, fastest
+int get_db_flags_from_mode(const std::string& db_mode)
+{
+  int db_flags = 0;
+  if (db_mode == "safe")
+    db_flags = DBF_SAFE;
+  else if (db_mode == "fast")
+    db_flags = DBF_FAST;
+  else if (db_mode == "fastest")
+    db_flags = DBF_FASTEST;
+  return db_flags;
+}
 
 int pop_blocks(cryptonote::core& core, int num_blocks)
 {
@@ -162,7 +174,7 @@ int check_flush(cryptonote::core &core, std::vector<block_complete_entry> &block
     for(auto& tx_blob: block_entry.txs)
     {
       tx_verification_context tvc = AUTO_VAL_INIT(tvc);
-      core.handle_incoming_tx(tx_blob, tvc, true, true, false);
+      core.handle_incoming_tx(tx_blob, tvc, relay_method::block, true);
       if(tvc.m_verifivation_failed)
       {
         MERROR("transaction verification failed, tx_id = "
@@ -215,6 +227,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
     return false;
   }
 
+  uint64_t block_first, block_last;
   uint64_t start_height = 1, seek_height;
   if (opt_resume)
     start_height = core.get_blockchain_storage().get_current_blockchain_height();
@@ -223,10 +236,10 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
   BootstrapFile bootstrap;
   std::streampos pos;
   // BootstrapFile bootstrap(import_file_path);
-  uint64_t total_source_blocks = bootstrap.count_blocks(import_file_path, pos, seek_height);
-  MINFO("bootstrap file last block number: " << total_source_blocks-1 << " (zero-based height)  total blocks: " << total_source_blocks);
+  uint64_t total_source_blocks = bootstrap.count_blocks(import_file_path, pos, seek_height, block_first);
+  MINFO("bootstrap file last block number: " << total_source_blocks+block_first-1 << " (zero-based height)  total blocks: " << total_source_blocks);
 
-  if (total_source_blocks-1 <= start_height)
+  if (total_source_blocks+block_first-1 <= start_height)
   {
     return false;
   }
@@ -248,7 +261,8 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
 
   // 4 byte magic + (currently) 1024 byte header structures
   uint8_t major_version, minor_version;
-  bootstrap.seek_to_first_chunk(import_file, major_version, minor_version);
+  uint64_t dummy;
+  bootstrap.seek_to_first_chunk(import_file, major_version, minor_version, dummy, dummy);
 
   std::string str1;
   char buffer1[1024];
@@ -263,7 +277,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
 
   if (! block_stop)
   {
-    block_stop = total_source_blocks - 1;
+    block_stop = total_source_blocks+block_first - 1;
   }
 
   // These are what we'll try to use, and they don't have to be a determination
@@ -369,7 +383,23 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
     {
       str1.assign(buffer_block, chunk_size);
       bootstrap::block_package bp;
-      if (! ::serialization::parse_binary(str1, bp))
+      bool res;
+      if (major_version == 0)
+      {
+        bootstrap::block_package_1 bp1;
+        res = ::serialization::parse_binary(str1, bp1);
+        if (res)
+        {
+          bp.block = std::move(bp1.block);
+          bp.txs = std::move(bp1.txs);
+          bp.block_weight = bp1.block_weight;
+          bp.cumulative_difficulty = bp1.cumulative_difficulty;
+          bp.coins_generated = bp1.coins_generated;
+        }
+      }
+      else
+        res = ::serialization::parse_binary(str1, bp);
+      if (!res)
         throw std::runtime_error("Error in deserialization of chunk");
 
       int display_interval = 1000;
@@ -442,7 +472,7 @@ int import_from_file(cryptonote::core& core, const std::string& import_file_path
           }
 
           size_t block_weight;
-          difficulty_type_128 cumulative_difficulty;
+          difficulty_type cumulative_difficulty;
           uint64_t coins_generated;
 
           block_weight = bp.block_weight;
@@ -535,6 +565,7 @@ int main(int argc, char* argv[])
   uint64_t num_blocks = 0;
   uint64_t block_stop = 0;
   std::string m_config_folder;
+  std::string db_arg_str;
 
   tools::on_startup();
 
@@ -553,8 +584,8 @@ int main(int argc, char* argv[])
       , "Count blocks in bootstrap file and exit"
       , false
   };
-  const command_line::arg_descriptor<bool> arg_verify =  {"verify",
-    "Verify blocks and transactions during import (only disable if you exported the file yourself)", true};
+  const command_line::arg_descriptor<bool> arg_noverify =  {"dangerous-unverified-import",
+    "Blindly trust the import file and use potentially malicious blocks and transactions during import (only enable if you exported the file yourself)", false};
   const command_line::arg_descriptor<bool> arg_batch  =  {"batch",
     "Batch transactions for faster import", true};
   const command_line::arg_descriptor<bool> arg_resume =  {"resume",
@@ -573,7 +604,7 @@ int main(int argc, char* argv[])
   // call add_options() directly for these arguments since
   // command_line helpers support only boolean switch, not boolean argument
   desc_cmd_sett.add_options()
-    (arg_verify.name, make_semantic(arg_verify), arg_verify.description)
+    (arg_noverify.name, make_semantic(arg_noverify), arg_noverify.description)
     (arg_batch.name,  make_semantic(arg_batch),  arg_batch.description)
     (arg_resume.name, make_semantic(arg_resume), arg_resume.description)
     ;
@@ -592,7 +623,7 @@ int main(int argc, char* argv[])
   if (! r)
     return 1;
 
-  opt_verify    = command_line::get_arg(vm, arg_verify);
+  opt_verify    = !command_line::get_arg(vm, arg_noverify);
   opt_batch     = command_line::get_arg(vm, arg_batch);
   opt_resume    = command_line::get_arg(vm, arg_resume);
   block_stop    = command_line::get_arg(vm, arg_block_stop);
@@ -600,13 +631,10 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "WAZN '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
     std::cout << desc_options << std::endl;
     return 1;
   }
-
-  if (!tools::check_aesni())
-    return 1;
 
   if (! opt_batch && !command_line::is_arg_defaulted(vm, arg_batch_size))
   {
@@ -640,7 +668,7 @@ int main(int argc, char* argv[])
   }
   m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
 
-  mlog_configure(mlog_get_default_log_path("wazn-blockchain-import.log"), true);
+  mlog_configure(mlog_get_default_log_path("monero-blockchain-import.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
     mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
   else
@@ -681,6 +709,18 @@ int main(int argc, char* argv[])
   MINFO("bootstrap file path: " << import_file_path);
   MINFO("database path:       " << m_config_folder);
 
+  if (!opt_verify)
+  {
+    MCLOG_RED(el::Level::Warning, "global", "\n"
+      "Import is set to proceed WITHOUT VERIFICATION.\n"
+      "This is a DANGEROUS operation: if the file was tampered with in transit, or obtained from a malicious source,\n"
+      "you could end up with a compromised database. It is recommended to NOT use " << arg_noverify.name << ".\n"
+      "*****************************************************************************************\n"
+      "You have 90 seconds to press ^C or terminate this program before unverified import starts\n"
+      "*****************************************************************************************");
+    sleep(90);
+  }
+
   cryptonote::cryptonote_protocol_stub pr; //TODO: stub only for this kind of test, make real validation of relayed objects
   cryptonote::core core(&pr);
 
@@ -688,9 +728,11 @@ int main(int argc, char* argv[])
   {
 
   core.disable_dns_checkpoints(true);
-
+#if defined(PER_BLOCK_CHECKPOINT)
+  const GetCheckpointsCallback& get_checkpoints = blocks::GetCheckpointsData;
+#else
   const GetCheckpointsCallback& get_checkpoints = nullptr;
-
+#endif
   if (!core.init(vm, nullptr, get_checkpoints))
   {
     std::cerr << "Failed to initialize core" << ENDL;

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -35,7 +35,6 @@
 #include "common/threadpool.h"
 #include "crypto/crypto.h"
 #include <boost/thread/mutex.hpp>
-#include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/optional.hpp>
 using namespace epee;
@@ -102,6 +101,7 @@ get_builtin_ds(void)
 {
   static const char * const ds[] =
   {
+    ". IN DS 19036 8 2 49AAC11D7B6F6446702E54A1607371607A1A41855200FD2CE1CDDE32F24E8FB5\n",
     ". IN DS 20326 8 2 E06D44B80B8F1D39A95C0B0D7C65D08458E880409BBC683457104237C7F8EC8D\n",
     NULL
   };
@@ -243,29 +243,61 @@ static void add_anchors(ub_ctx *ctx)
 
 DNSResolver::DNSResolver() : m_data(new DNSResolverData())
 {
+  int use_dns_public = 0;
   std::vector<std::string> dns_public_addr;
-  char* DNS_PUBLIC = getenv("DNS_PUBLIC");
+  const char *DNS_PUBLIC = getenv("DNS_PUBLIC");
   if (DNS_PUBLIC)
   {
-    dns_public_addr = tools::dns_utils::parse_dns_public(std::string(DNS_PUBLIC));
-    if (dns_public_addr.empty())
+    dns_public_addr = tools::dns_utils::parse_dns_public(DNS_PUBLIC);
+    if (!dns_public_addr.empty())
+    {
+      MGINFO("Using public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
+      use_dns_public = 1;
+    }
+    else
+    {
       MERROR("Failed to parse DNS_PUBLIC");
+    }
   }
-
-  for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
-    dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
-  LOG_PRINT_L0("Using public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
 
   // init libunbound context
   m_data->m_ub_context = ub_ctx_create();
 
-  for (const auto &ip: dns_public_addr)
-    ub_ctx_set_fwd(m_data->m_ub_context, string_copy(ip.c_str()));
-
-  ub_ctx_set_option(m_data->m_ub_context, string_copy("do-udp:"), string_copy("no"));
-  ub_ctx_set_option(m_data->m_ub_context, string_copy("do-tcp:"), string_copy("yes"));
+  if (use_dns_public)
+  {
+    for (const auto &ip: dns_public_addr)
+      ub_ctx_set_fwd(m_data->m_ub_context, string_copy(ip.c_str()));
+    ub_ctx_set_option(m_data->m_ub_context, string_copy("do-udp:"), string_copy("no"));
+    ub_ctx_set_option(m_data->m_ub_context, string_copy("do-tcp:"), string_copy("yes"));
+  }
+  else {
+    // look for "/etc/resolv.conf" and "/etc/hosts" or platform equivalent
+    ub_ctx_resolvconf(m_data->m_ub_context, NULL);
+    ub_ctx_hosts(m_data->m_ub_context, NULL);
+  }
 
   add_anchors(m_data->m_ub_context);
+
+  if (!DNS_PUBLIC)
+  {
+    // if no DNS_PUBLIC specified, we try a lookup to what we know
+    // should be a valid DNSSEC record, and switch to known good
+    // DNSSEC resolvers if verification fails
+    bool available, valid;
+    static const char *probe_hostname = "updates.moneropulse.org";
+    auto records = get_txt_record(probe_hostname, available, valid);
+    if (!valid)
+    {
+      MINFO("Failed to verify DNSSEC record from " << probe_hostname << ", falling back to TCP with well known DNSSEC resolvers");
+      ub_ctx_delete(m_data->m_ub_context);
+      m_data->m_ub_context = ub_ctx_create();
+      add_anchors(m_data->m_ub_context);
+      for (const auto &ip: DEFAULT_DNS_PUBLIC_ADDR)
+        ub_ctx_set_fwd(m_data->m_ub_context, string_copy(ip));
+      ub_ctx_set_option(m_data->m_ub_context, string_copy("do-udp:"), string_copy("no"));
+      ub_ctx_set_option(m_data->m_ub_context, string_copy("do-tcp:"), string_copy("yes"));
+    }
+  }
 }
 
 DNSResolver::~DNSResolver()
@@ -344,6 +376,14 @@ std::string DNSResolver::get_dns_format_from_oa_address(const std::string& oa_ad
   return addr;
 }
 
+DNSResolver& DNSResolver::instance()
+{
+  boost::lock_guard<boost::mutex> lock(instance_lock);
+
+  static DNSResolver staticInstance;
+  return staticInstance;
+}
+
 DNSResolver DNSResolver::create()
 {
   return DNSResolver();
@@ -408,11 +448,10 @@ std::string address_from_txt_record(const std::string& s)
 std::vector<std::string> addresses_from_url(const std::string& url, bool& dnssec_valid)
 {
   std::vector<std::string> addresses;
-  tools::DNSResolver dr = tools::DNSResolver::create();
   // get txt records
   bool dnssec_available, dnssec_isvalid;
-  std::string oa_addr = dr.get_dns_format_from_oa_address(url);
-  auto records = dr.get_txt_record(oa_addr, dnssec_available, dnssec_isvalid);
+  std::string oa_addr = DNSResolver::instance().get_dns_format_from_oa_address(url);
+  auto records = DNSResolver::instance().get_txt_record(oa_addr, dnssec_available, dnssec_isvalid);
 
   // TODO: update this to allow for conveying that dnssec was not available
   if (dnssec_available && dnssec_isvalid)
@@ -469,13 +508,7 @@ namespace
   }
 }
 
-bool load_txt_records_from_dns(std::vector<std::string> &records, const std::vector<std::string> &dns_urls)
-{
-  tools::DNSResolver dr = tools::DNSResolver::create();
-  return load_txt_records_from_dns(dr, records, dns_urls);
-}
-
-bool load_txt_records_from_dns(DNSResolver &dr, std::vector<std::string> &good_records, const std::vector<std::string> &dns_urls)
+bool load_txt_records_from_dns(std::vector<std::string> &good_records, const std::vector<std::string> &dns_urls)
 {
   // Prevent infinite recursion when distributing
   if (dns_urls.empty()) return false;
@@ -488,14 +521,14 @@ bool load_txt_records_from_dns(DNSResolver &dr, std::vector<std::string> &good_r
   // send all requests in parallel
   std::deque<bool> avail(dns_urls.size(), false), valid(dns_urls.size(), false);
   tools::threadpool& tpool = tools::threadpool::getInstance();
-  tools::threadpool::waiter waiter;
+  tools::threadpool::waiter waiter(tpool);
   for (size_t n = 0; n < dns_urls.size(); ++n)
   {
-    tpool.submit(&waiter,[&dr, n, dns_urls, &records, &avail, &valid](){
-      records[n] = dr.get_txt_record(dns_urls[n], avail[n], valid[n]);
+    tpool.submit(&waiter,[n, dns_urls, &records, &avail, &valid](){
+      records[n] = tools::DNSResolver::instance().get_txt_record(dns_urls[n], avail[n], valid[n]); 
     });
   }
-  waiter.wait(&tpool);
+  waiter.wait();
 
   size_t cur_index = first_index;
   do
@@ -529,20 +562,12 @@ bool load_txt_records_from_dns(DNSResolver &dr, std::vector<std::string> &good_r
     }
   }
 
-  if (num_valid_records == 0)
+  if (num_valid_records < 2)
   {
-    LOG_PRINT_L1("Unable to find valid DNS record");
+    LOG_PRINT_L0("WARNING: no two valid DNS TXT records were received");
     return false;
   }
 
-  //WAZN currently only has one dns update url. So if we have made it this far
-  //we have a dnssec verified update record, so accept it. it is after all only for notification purposes
-  //the code will automatically require 2 if it comes a time when we can add a second domain
-  if (dns_urls.size() == 1)
-  {
-    good_records = records[0];
-    return true;
-  }
   int good_records_index = -1;
   for (size_t i = 0; i < records.size() - 1; ++i)
   {
@@ -569,26 +594,31 @@ bool load_txt_records_from_dns(DNSResolver &dr, std::vector<std::string> &good_r
   return true;
 }
 
-std::vector<std::string> parse_dns_public(std::string dns_public)
+std::vector<std::string> parse_dns_public(const char *s)
 {
-  std::vector<std::string> split;
+  unsigned ip0, ip1, ip2, ip3;
+  char c;
   std::vector<std::string> dns_public_addr;
-  boost::split(split, dns_public, boost::is_any_of(","));
-
-  for (auto &s : split)
+  if (!strcmp(s, "tcp"))
   {
-    unsigned ip0, ip1, ip2, ip3;
-    char c;
-
-    if (sscanf(s.c_str(), "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
+    for (size_t i = 0; i < sizeof(DEFAULT_DNS_PUBLIC_ADDR) / sizeof(DEFAULT_DNS_PUBLIC_ADDR[0]); ++i)
+      dns_public_addr.push_back(DEFAULT_DNS_PUBLIC_ADDR[i]);
+    LOG_PRINT_L0("Using default public DNS server(s): " << boost::join(dns_public_addr, ", ") << " (TCP)");
+  }
+  else if (sscanf(s, "tcp://%u.%u.%u.%u%c", &ip0, &ip1, &ip2, &ip3, &c) == 4)
+  {
+    if (ip0 > 255 || ip1 > 255 || ip2 > 255 || ip3 > 255)
     {
-      if (ip0 > 255 || ip1 > 255 || ip2 > 255 || ip3 > 255)
-        continue;
-
-      dns_public_addr.push_back(std::string(s.begin() + strlen("tcp://"), s.end()));
+      MERROR("Invalid IP: " << s << ", using default");
     }
     else
-      MERROR("Invalid DNS_PUBLIC entry: " << s);
+    {
+      dns_public_addr.push_back(std::string(s + strlen("tcp://")));
+    }
+  }
+  else
+  {
+    MERROR("Invalid DNS_PUBLIC contents, ignored");
   }
   return dns_public_addr;
 }

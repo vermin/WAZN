@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -47,12 +45,6 @@ namespace net_utils
 {
   namespace http
   {
-    enum authentication_type{
-        http_auth_none,
-        http_auth_digest,
-        http_auth_basic
-    };
-
     struct login
     {
       login() : username(), password() {}
@@ -64,16 +56,8 @@ namespace net_utils
       wipeable_string password;
     };
 
-    class http_server_auth
-    {
-    public:
-      virtual ~http_server_auth() = default;
-      //! \return Auth response, or `boost::none` iff `request` had valid auth.
-      virtual boost::optional<http_response_info> get_response(const http_request_info& request) = 0;
-    };
-
     //! Implements RFC 2617 digest auth. Digests from RFC 7616 can be added.
-    class http_server_auth_digest : public http_server_auth
+    class http_server_auth
     {
     public:
       struct session
@@ -87,9 +71,8 @@ namespace net_utils
         std::uint32_t counter;
       };
 
-      http_server_auth_digest() : user(), rng() {}
-      http_server_auth_digest(login credentials, std::function<void(size_t, uint8_t*)> r);
-      ~http_server_auth_digest() = default;
+      http_server_auth() : user(), rng() {}
+      http_server_auth(login credentials, std::function<void(size_t, uint8_t*)> r);
 
       //! \return Auth response, or `boost::none` iff `request` had valid auth.
       boost::optional<http_response_info> get_response(const http_request_info& request)
@@ -105,18 +88,6 @@ namespace net_utils
       boost::optional<session> user;
 
       std::function<void(size_t, uint8_t*)> rng;
-    };
-
-    class http_server_auth_basic : public http_server_auth
-    {
-    public:
-      http_server_auth_basic(login credentials);
-      ~http_server_auth_basic() = default;
-
-      boost::optional<http_response_info> get_response(const http_request_info& request);
-
-    private:
-        epee::wipeable_string encoded_credentials;
     };
 
     //! Implements RFC 2617 digest auth. Digests from RFC 7616 can be added.

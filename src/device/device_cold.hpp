@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2020, The NERVA Project
-// Copyright (c) 2017-2019, The Monero Project
+// Copyright (c) 2017-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -47,9 +45,9 @@ namespace hw {
   public:
     std::vector<std::string> tx_device_aux;  // device generated aux data
     std::vector<cryptonote::address_parse_info> tx_recipients;  // as entered by user
-    boost::optional<int> is_v2_bp;  // BP version to use
+    boost::optional<int> bp_version;  // BP version to use
     boost::optional<unsigned> client_version;  // Signing client version to use (testing)
-    boost::optional<uint8_t> hard_fork;
+    boost::optional<uint8_t> hard_fork;  // hard fork being used for the transaction
   };
 
   class device_cold {

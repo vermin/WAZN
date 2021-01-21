@@ -1,6 +1,4 @@
-# Copyright (c) 2019-2021 WAZN Project
-# Copyright (c) 2018-2019, The NERVA Project
-# Copyright (c) 2014-2019, The Monero Project
+# Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
 #
@@ -41,7 +39,6 @@ set(crypto_sources
   hash-extra-jh.c
   hash-extra-skein.c
   hash.c
-  hc128.c
   hmac-keccak.c
   jh.c
   keccak.c
@@ -49,7 +46,15 @@ set(crypto_sources
   random.c
   skein.c
   slow-hash.c
+  rx-slow-hash.c
+  CryptonightR_JIT.c
   tree-hash.c)
+
+if(ARCH_ID STREQUAL "i386" OR ARCH_ID STREQUAL "x86_64" OR ARCH_ID STREQUAL "x86-64" OR ARCH_ID STREQUAL "amd64")
+list(APPEND crypto_sources CryptonightR_template.S)
+endif()
+
+include_directories(${RANDOMX_INCLUDE})
 
 set(crypto_headers)
 
@@ -63,7 +68,6 @@ set(crypto_private_headers
   groestl_tables.h
   hash-ops.h
   hash.h
-  hc128.h
   hmac-keccak.h
   initializer.h
   jh.h
@@ -73,7 +77,8 @@ set(crypto_private_headers
   random.h
   skein.h
   skein_port.h
-  slow-hash.h)
+  CryptonightR_JIT.h
+  CryptonightR_template.h)
 
 monero_private_headers(cncrypto
   ${crypto_private_headers})
@@ -84,6 +89,7 @@ monero_add_library(cncrypto
 target_link_libraries(cncrypto
   PUBLIC
     epee
+    randomx
     ${Boost_SYSTEM_LIBRARY}
     ${SODIUM_LIBRARY}
   PRIVATE
@@ -100,10 +106,16 @@ if (ARM)
 endif()
 
 # Because of the way Qt works on android with JNI, the code does not live in the main android thread
-# So this code runs with a 1 MB default stack size.
+# So this code runs with a 1 MB default stack size. 
 # This will force the use of the heap for the allocation of the scratchpad
 if (ANDROID OR IOS)
   if( BUILD_GUI_DEPS )
     add_definitions(-DFORCE_USE_HEAP=1)
   endif()
 endif()
+
+# cheat because cmake and ccache hate each other
+set_property(SOURCE CryptonightR_template.S PROPERTY LANGUAGE C)
+
+# Must be done last, because it references libraries in this directory
+add_subdirectory(wallet)

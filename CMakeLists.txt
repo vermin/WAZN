@@ -1,5 +1,3 @@
-# Copyright (c) 2019-2021 WAZN Project
-# Copyright (c) 2018-2019, The Nerva Project
 # Copyright (c) 2014-2020, The Monero Project
 #
 # All rights reserved.
@@ -29,13 +27,17 @@
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 list(INSERT CMAKE_MODULE_PATH 0
-  "${CMAKE_SOURCE_DIR}/cmake")
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 include(CheckLinkerFlag)
 include(CheckLibraryExists)
 include(CheckFunctionExists)
+include(FindPythonInterp)
 
 if (IOS)
     INCLUDE(CmakeLists_IOS.txt)
@@ -45,6 +47,13 @@ cmake_minimum_required(VERSION 2.8.7)
 message(STATUS "CMake version ${CMAKE_VERSION}")
 
 project(monero)
+
+option (USE_CCACHE "Use ccache if a usable instance is found" ON)
+if (USE_CCACHE)
+	include(FindCcache) # Has to be included after the project() macro, to be able to read the CXX variable.
+else()
+	message(STATUS "ccache deselected")
+endif()
 
 enable_language(C ASM)
 
@@ -107,11 +116,6 @@ if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "Setting default build type: ${CMAKE_BUILD_TYPE}")
 endif()
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
-
-if(CMAKE_BUILD_TYPE_LOWER STREQUAL debug)
-  add_definitions(-DDEBUG_TERMINAL)
-  message(STATUS "DEBUG_TERMINAL defined")
-endif()
 
 # ARCH defines the target architecture, either by an explicit identifier or
 # one of the following two keywords. By default, ARCH a value of 'native':
@@ -186,11 +190,42 @@ else()
   message(STATUS "Building without build tag")
 endif()
 
+if(NOT MANUAL_SUBMODULES)
+  find_package(Git)
+  if(GIT_FOUND)
+    function (check_submodule relative_path)
+      execute_process(COMMAND git rev-parse "HEAD" WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${relative_path} OUTPUT_VARIABLE localHead)
+      execute_process(COMMAND git rev-parse "HEAD:${relative_path}" WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} OUTPUT_VARIABLE checkedHead)
+      string(COMPARE EQUAL "${localHead}" "${checkedHead}" upToDate)
+      if (upToDate)
+        message(STATUS "Submodule '${relative_path}' is up-to-date")
+      else()
+        message(FATAL_ERROR "Submodule '${relative_path}' is not up-to-date. Please update all submodules with\ngit submodule update --init --force\nor run cmake with -DMANUAL_SUBMODULES=1\n")
+      endif()
+    endfunction ()
+    
+    message(STATUS "Checking submodules")
+    check_submodule(external/miniupnp)
+    check_submodule(external/unbound)
+    check_submodule(external/rapidjson)
+    check_submodule(external/trezor-common)
+    check_submodule(external/randomx)
+    check_submodule(external/supercop)
+  endif()
+endif()
+
 set(CMAKE_C_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG ${OPT_FLAGS_RELEASE}")
 
 # set this to 0 if per-block checkpoint needs to be disabled
-set(BUILD_SHARED_LIBS OFF)
+set(PER_BLOCK_CHECKPOINT 1)
+
+if(PER_BLOCK_CHECKPOINT)
+  add_definitions("-DPER_BLOCK_CHECKPOINT")
+  set(Blocks "blocks")
+else()
+  set(Blocks "")
+endif()
 
 list(INSERT CMAKE_MODULE_PATH 0
   "${CMAKE_SOURCE_DIR}/cmake")
@@ -224,7 +259,20 @@ endif()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 enable_testing()
 
-option(BUILD_EXTRAS "Build extras not needed for ordinary usage." OFF)
+option(BUILD_DOCUMENTATION "Build the Doxygen documentation." ON)
+option(BUILD_TESTS "Build tests." OFF)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(DEFAULT_BUILD_DEBUG_UTILITIES ON)
+else()
+  set(DEFAULT_BUILD_DEBUG_UTILITIES OFF)
+endif()
+option(BUILD_DEBUG_UTILITIES "Build debug utilities." DEFAULT_BUILD_DEBUG_UTILITIES)
+
+if(OSSFUZZ)
+  message(STATUS "Using OSS-Fuzz fuzzing system")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DOSSFUZZ")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DOSSFUZZ")
+endif()
 
 # Check whether we're on a 32-bit or 64-bit system
 if(CMAKE_SIZEOF_VOID_P EQUAL "8")
@@ -264,7 +312,7 @@ endif()
 # elseif(CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
 #   set(BSDI TRUE)
 
-include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external)
+include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external external/supercop/include)
 
 if(APPLE)
   include_directories(SYSTEM /usr/include/malloc)
@@ -383,8 +431,8 @@ if (CMAKE_SYSTEM_NAME MATCHES "(SunOS|Solaris)")
 endif ()
 
 if (APPLE AND NOT IOS)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=hidden -fvisibility-inlines-hidden -std=c++11")
-  if (NOT OpenSSL_DIR)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=x86-64 -fvisibility=default -std=c++11")
+  if (NOT OPENSSL_ROOT_DIR)
       EXECUTE_PROCESS(COMMAND brew --prefix openssl
         OUTPUT_VARIABLE OPENSSL_ROOT_DIR
         OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -392,21 +440,12 @@ if (APPLE AND NOT IOS)
   endif()
 endif()
 
-if(STATIC)
-  set(OPENSSL_USE_STATIC_LIBS TRUE)
-endif()
-
 find_package(OpenSSL REQUIRED)
 message(STATUS "Using OpenSSL include dir at ${OPENSSL_INCLUDE_DIR}")
-find_package(CURL REQUIRED)
-message(STATUS "Using Curl include dir at ${CURL_INCLUDE_DIR}")
-
 include_directories(${OPENSSL_INCLUDE_DIR})
-include_directories(${CURL_INCLUDE_DIRS})
 if(STATIC AND NOT IOS)
   if(UNIX)
     set(OPENSSL_LIBRARIES "${OPENSSL_LIBRARIES};${CMAKE_DL_LIBS};${CMAKE_THREAD_LIBS_INIT}")
-    set(CURL_LIBRARIES "${CURL_LIBRARIES}")
   endif()
 endif()
 
@@ -417,6 +456,9 @@ add_definition_if_library_exists(c explicit_bzero "strings.h" HAVE_EXPLICIT_BZER
 add_definition_if_function_found(strptime HAVE_STRPTIME)
 
 add_definitions(-DAUTO_INITIALIZE_EASYLOGGINGPP)
+
+set(MONERO_GENERATED_HEADERS_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated_include")
+include_directories(${MONERO_GENERATED_HEADERS_DIR})
 
 # Generate header for embedded translations
 # Generate header for embedded translations, use target toolchain if depends, otherwise use the
@@ -447,7 +489,7 @@ include_directories(${LIBUNWIND_INCLUDE})
 link_directories(${LIBUNWIND_LIBRARY_DIRS})
 
 # Final setup for hid
-if (HIDAPI_FOUND)
+if (HIDAPI_FOUND) 
   message(STATUS "Using HIDAPI include dir at ${HIDAPI_INCLUDE_DIR}")
   add_definitions(-DHAVE_HIDAPI)
   include_directories(${HIDAPI_INCLUDE_DIR})
@@ -455,6 +497,9 @@ if (HIDAPI_FOUND)
 else (HIDAPI_FOUND)
   message(STATUS "Could not find HIDAPI")
 endif()
+
+# Trezor support check
+include(CheckTrezor)
 
 if(MSVC)
   add_definitions("/bigobj /MP /W3 /GS- /D_CRT_SECURE_NO_WARNINGS /wd4996 /wd4345 /D_WIN32_WINNT=0x0600 /DWIN32_LEAN_AND_MEAN /DGTEST_HAS_TR1_TUPLE=0 /FIinline_c.h /D__SSE4_1__")
@@ -616,7 +661,8 @@ else()
   endif()
 
   # linker
-  if (NOT (WIN32 AND (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1)))
+  if (NOT SANITIZE AND NOT OSSFUZZ AND NOT (WIN32 AND (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_LESS 9.1)))
+    # PIE executables randomly crash at startup with ASAN
     # Windows binaries die on startup with PIE when compiled with GCC <9.x
     add_linker_flag_if_supported(-pie LD_SECURITY_FLAGS)
   endif()
@@ -738,8 +784,9 @@ else()
 
   endif(ARM)
 
-  if(ANDROID AND NOT BUILD_GUI_DEPS STREQUAL "ON" OR IOS)
-    #From Android 5: "only position independent executables (PIE) are supported"
+  # random crash on startup when asan is on if pie is enabled
+  if(NOT SANITIZE AND ANDROID AND NOT BUILD_GUI_DEPS STREQUAL "ON" OR IOS)
+    #From Android 5: "only position independent executables (PIE) are supported" 
     message(STATUS "Enabling PIE executable")
     set(PIC_FLAG "")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIE")
@@ -748,10 +795,15 @@ else()
   endif()
 
   if(APPLE)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=hidden -fvisibility-inlines-hidden -DGTEST_HAS_TR1_TUPLE=0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fvisibility=default -DGTEST_HAS_TR1_TUPLE=0")
   endif()
 
-  set(DEBUG_FLAGS "-g3 -O0")
+  set(DEBUG_FLAGS "-g3")
+  if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND NOT (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.8))
+    set(DEBUG_FLAGS "${DEBUG_FLAGS} -Og ")
+  else()
+    set(DEBUG_FLAGS "${DEBUG_FLAGS} -O0 ")
+  endif()
 
   # At least some CLANGs default to not enough for monero
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=900")
@@ -820,7 +872,6 @@ if(STATIC)
   set(Boost_USE_STATIC_LIBS ON)
   set(Boost_USE_STATIC_RUNTIME ON)
 endif()
-
 find_package(Boost 1.58 QUIET REQUIRED COMPONENTS system filesystem thread date_time chrono regex serialization program_options locale)
 
 set(CMAKE_FIND_LIBRARY_SUFFIXES ${OLD_LIB_SUFFIXES})
@@ -883,7 +934,7 @@ if (HIDAPI_FOUND OR LibUSB_COMPILE_TEST_PASSED)
 endif()
 
 option(USE_READLINE "Build with GNU readline support." ON)
-if(USE_READLINE)
+if(USE_READLINE AND NOT DEPENDS)
   find_package(Readline)
   if(READLINE_FOUND AND GNU_READLINE_FOUND)
     add_definitions(-DHAVE_READLINE)
@@ -893,6 +944,14 @@ if(USE_READLINE)
   else()
     message(STATUS "Could not find GNU readline library so building without readline support")
   endif()
+elseif(USE_READLINE AND DEPENDS AND NOT MINGW)
+  find_path(Readline_INCLUDE_PATH readline/readline.h)
+  find_library(Readline_LIBRARY readline)
+  find_library(Terminfo_LIBRARY tinfo)
+  set(Readline_LIBRARY "${Readline_LIBRARY};${Terminfo_LIBRARY}")
+  set(GNU_READLINE_LIBRARY ${Readline_LIBRARY})
+  add_definitions(-DHAVE_READLINE)
+  set(EPEE_READLINE epee_readline)
 endif()
 
 if(ANDROID)
@@ -906,15 +965,16 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND ARCH_WIDTH EQUAL "32" AND NOT IOS AN
   endif()
 endif()
 
-find_path(ZMQ_INCLUDE_PATH zmq.hpp)
+find_path(ZMQ_INCLUDE_PATH zmq.h)
 find_library(ZMQ_LIB zmq)
 find_library(PGM_LIBRARY pgm)
 find_library(NORM_LIBRARY norm)
+find_library(GSSAPI_LIBRARY gssapi_krb5)
 find_library(PROTOLIB_LIBRARY protolib)
 find_library(SODIUM_LIBRARY sodium)
 
 if(NOT ZMQ_INCLUDE_PATH)
-  message(FATAL_ERROR "Could not find required header zmq.hpp")
+  message(FATAL_ERROR "Could not find required header zmq.h")
 endif()
 if(NOT ZMQ_LIB)
   message(FATAL_ERROR "Could not find required libzmq")
@@ -925,6 +985,9 @@ endif()
 if(NORM_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${NORM_LIBRARY}")
 endif()
+if(GSSAPI_LIBRARY)
+  set(ZMQ_LIB "${ZMQ_LIB};${GSSAPI_LIBRARY}")
+endif()
 if(PROTOLIB_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${PROTOLIB_LIBRARY}")
 endif()
@@ -932,8 +995,45 @@ if(SODIUM_LIBRARY)
   set(ZMQ_LIB "${ZMQ_LIB};${SODIUM_LIBRARY}")
 endif()
 
+include(external/supercop/functions.cmake) # place after setting flags and before src directory inclusion
 add_subdirectory(contrib)
 add_subdirectory(src)
+
+find_package(PythonInterp)
+if(BUILD_TESTS)
+  message(STATUS "Building tests")
+  add_subdirectory(tests)
+else()
+  message(STATUS "Not building tests")
+endif()
+
+if(BUILD_DEBUG_UTILITIES)
+  message(STATUS "Building debug utilities")
+else()
+  message(STATUS "Not building debug utilities")
+endif()
+
+if(BUILD_DOCUMENTATION)
+  set(DOC_GRAPHS "YES" CACHE STRING "Create dependency graphs (needs graphviz)")
+  set(DOC_FULLGRAPHS "NO" CACHE STRING "Create call/callee graphs (large)")
+
+  find_program(DOT_PATH dot)
+
+  if (DOT_PATH STREQUAL "DOT_PATH-NOTFOUND")
+    message("Doxygen: graphviz not found - graphs disabled")
+    set(DOC_GRAPHS "NO")
+  endif()
+
+  find_package(Doxygen)
+  if(DOXYGEN_FOUND)
+    configure_file("cmake/Doxyfile.in" "Doxyfile" @ONLY)
+    configure_file("cmake/Doxygen.extra.css.in" "Doxygen.extra.css" @ONLY)
+    add_custom_target(doc
+      ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+      COMMENT "Generating API documentation with Doxygen.." VERBATIM)
+  endif()
+endif()
 
 # when ON - will install libwallet_merged into "lib"
 option(BUILD_GUI_DEPS "Build GUI dependencies." OFF)
@@ -944,3 +1044,13 @@ option(INSTALL_VENDORED_LIBUNBOUND "Install libunbound binary built from source 
 
 
 CHECK_C_COMPILER_FLAG(-std=c11 HAVE_C11)
+
+find_package(PythonInterp)
+find_program(iwyu_tool_path NAMES iwyu_tool.py iwyu_tool)
+if (iwyu_tool_path AND PYTHONINTERP_FOUND)
+  add_custom_target(iwyu
+    COMMAND "${PYTHON_EXECUTABLE}" "${iwyu_tool_path}" -p "${CMAKE_BINARY_DIR}" -- --no_fwd_decls
+    COMMENT "Running include-what-you-use tool"
+    VERBATIM
+  )
+endif()

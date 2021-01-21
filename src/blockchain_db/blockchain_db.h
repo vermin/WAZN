@@ -1,6 +1,4 @@
-// Copyright (c) 2019-2021 WAZN Project
-// Copyright (c) 2018-2019, The NERVA Project
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -36,13 +34,12 @@
 #include <exception>
 #include <boost/program_options.hpp>
 #include "common/command_line.h"
-#include "crypto/crypto.h"
 #include "crypto/hash.h"
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/difficulty.h"
 #include "cryptonote_basic/hardfork.h"
-#include "ringct/rctOps.h"
+#include "cryptonote_protocol/enums.h"
 
 /** \file
  * Cryptonote Blockchain Database Interface
@@ -108,8 +105,16 @@ typedef std::pair<crypto::hash, uint64_t> tx_out_index;
 
 extern const command_line::arg_descriptor<std::string> arg_db_sync_mode;
 extern const command_line::arg_descriptor<bool, false> arg_db_salvage;
-extern const command_line::arg_descriptor<uint32_t> arg_db_readers;
-extern const command_line::arg_descriptor<uint32_t> arg_pop_blocks;
+
+enum class relay_category : uint8_t
+{
+  broadcasted = 0,//!< Public txes received via block/fluff
+  relayable,      //!< Every tx not marked `relay_method::none`
+  legacy,         //!< `relay_category::broadcasted` + `relay_method::none` for rpc relay requests or historical reasons
+  all             //!< Everything in the db
+};
+
+bool matches_category(relay_method method, relay_category category) noexcept;
 
 #pragma pack(push, 1)
 
@@ -155,17 +160,33 @@ struct txpool_tx_meta_t
   uint64_t max_used_block_height;
   uint64_t last_failed_height;
   uint64_t receive_time;
-  uint64_t last_relayed_time;
+  uint64_t last_relayed_time; //!< If received over i2p/tor, randomized forward time. If Dandelion++stem, randomized embargo time. Otherwise, last relayed timestamp
   // 112 bytes
   uint8_t kept_by_block;
   uint8_t relayed;
   uint8_t do_not_relay;
   uint8_t double_spend_seen: 1;
   uint8_t pruned: 1;
-  uint8_t bf_padding: 6;
+  uint8_t is_local: 1;
+  uint8_t dandelionpp_stem : 1;
+  uint8_t is_forwarding: 1;
+  uint8_t bf_padding: 3;
 
   uint8_t padding[76]; // till 192 bytes
+
+  void set_relay_method(relay_method method) noexcept;
+  relay_method get_relay_method() const noexcept;
+
+  //! \return True if `get_relay_method()` now returns `method`.
+  bool upgrade_relay_method(relay_method method) noexcept;
+
+  //! See `relay_category` description
+  bool matches(const relay_category category) const noexcept
+  {
+    return matches_category(get_relay_method(), category);
+  }
 };
+
 
 #define DBF_SAFE       1
 #define DBF_FAST       2
@@ -381,7 +402,7 @@ private:
   virtual void add_block( const block& blk
                 , size_t block_weight
                 , uint64_t long_term_block_weight
-                , const difficulty_type_128& cumulative_difficulty
+                , const difficulty_type& cumulative_difficulty
                 , const uint64_t& coins_generated
                 , uint64_t num_rct_outs
                 , const crypto::hash& blk_hash
@@ -419,12 +440,12 @@ private:
    * @param tx_prunable_hash the hash of the prunable part of the transaction
    * @return the transaction ID
    */
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) = 0;
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata_ref>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) = 0;
 
   /**
    * @brief remove data about a transaction
    *
-   * The subclass implementing this will remove the transaction data
+   * The subclass implementing this will remove the transaction data 
    * for the passed transaction.  The data to be removed was added in
    * add_transaction_data().  Additionally, current subclasses have behavior
    * which requires the transaction itself as a parameter here.  Future
@@ -547,7 +568,7 @@ protected:
    * @param tx_hash_ptr the hash of the transaction, if already calculated
    * @param tx_prunable_hash_ptr the hash of the prunable part of the transaction, if already calculated
    */
-  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata>& tx, const crypto::hash* tx_hash_ptr = NULL, const crypto::hash* tx_prunable_hash_ptr = NULL);
+  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata_ref>& tx, const crypto::hash* tx_hash_ptr = NULL, const crypto::hash* tx_prunable_hash_ptr = NULL);
 
   mutable uint64_t time_tx_exists = 0;  //!< a performance metric
   uint64_t time_commit1 = 0;  //!< a performance metric
@@ -608,7 +629,7 @@ public:
    * @param filename a string referring to the BlockchainDB to open
    * @param db_flags flags relevant to how to open/use the BlockchainDB
    */
-  virtual void open(const std::string& filename, const int db_flags = 0, uint32_t db_readers = 0) = 0;
+  virtual void open(const std::string& filename, const int db_flags = 0) = 0;
 
   /**
    * @brief Gets the current open/ready state of the BlockchainDB
@@ -808,7 +829,6 @@ public:
   virtual void block_rtxn_abort() const = 0;
 
   virtual void set_hard_fork(HardFork* hf);
-  virtual void set_expected_min_height(uint64_t height) = 0;
 
   // adds a block with the given metadata to the top of the blockchain, returns the new height
   /**
@@ -835,7 +855,7 @@ public:
   virtual uint64_t add_block( const std::pair<block, blobdata>& blk
                             , size_t block_weight
                             , uint64_t long_term_block_weight
-                            , const difficulty_type_128& cumulative_difficulty
+                            , const difficulty_type& cumulative_difficulty
                             , const uint64_t& coins_generated
                             , const std::vector<std::pair<transaction, blobdata>>& txs
                             );
@@ -916,11 +936,6 @@ public:
    * @return the block blob
    */
   virtual cryptonote::blobdata get_block_blob_from_height(const uint64_t& height) const = 0;
-
-  virtual void get_cna_v2_data(crypto::cn_random_values_t *rv, uint64_t height, uint32_t seed) = 0;
-  virtual void get_cna_v3_data(char *out, uint64_t height, uint32_t seed) = 0;
-  virtual void get_cna_v4_data(char *out, uint64_t height, uint32_t seed)  = 0;
-  virtual void get_cna_v5_data(char *out, HC128_State *rng_state, uint64_t height) = 0;
 
   /**
    * @brief fetch a block by height
@@ -1008,29 +1023,7 @@ public:
    *
    * @return the cumulative difficulty
    */
-  virtual difficulty_type_128 get_block_cumulative_difficulty(const uint64_t& height) const = 0;
-
-  /**
-   * @brief fetch a block's cumulative difficulty by hash id (main chain)
-   *
-   * If the block does not exist, the subclass should throw BLOCK_DNE
-   *
-   * @param id the hash id of the block requested
-   *
-   * @return the cumulative difficulty
-   */
-  virtual difficulty_type_128 get_block_cumulative_difficulty(const crypto::hash& id) const;
-
-  /**
-   * @brief fetch a block's difficulty by hash id (main chain)
-   *
-   * If the block does not exist, the subclass should throw BLOCK_DNE
-   *
-   * @param id the hash id of the block requested
-   *
-   * @return the cumulative difficulty
-   */
-  virtual uint64_t get_block_difficulty(const crypto::hash& id) const;
+  virtual difficulty_type get_block_cumulative_difficulty(const uint64_t& height) const = 0;
 
   /**
    * @brief fetch a block's difficulty
@@ -1044,7 +1037,17 @@ public:
    *
    * @return the difficulty
    */
-  virtual uint64_t get_block_difficulty(const uint64_t& height) const = 0;
+  virtual difficulty_type get_block_difficulty(const uint64_t& height) const = 0;
+
+  /**
+   * @brief correct blocks cumulative difficulties that were incorrectly calculated due to the 'difficulty drift' bug
+   *
+   * If the block does not exist, the subclass should throw BLOCK_DNE
+   *
+   * @param start_height the height where the drift starts
+   * @param new_cumulative_difficulties new cumulative difficulties to be stored
+   */
+  virtual void correct_block_cumulative_difficulties(const uint64_t& start_height, const std::vector<difficulty_type>& new_cumulative_difficulties) = 0;
 
   /**
    * @brief fetch a block's already generated coins
@@ -1182,6 +1185,7 @@ public:
    */
   virtual void pop_block(block& blk, std::vector<transaction>& txs);
 
+
   /**
    * @brief check if a transaction with a given hash exists
    *
@@ -1284,6 +1288,44 @@ public:
    * @return true iff the transaction was found
    */
   virtual bool get_pruned_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const = 0;
+
+  /**
+   * @brief fetches a number of pruned transaction blob from the given hash, in canonical blockchain order
+   *
+   * The subclass should return the pruned transactions stored from the one with the given
+   * hash.
+   *
+   * If the first transaction does not exist, the subclass should return false.
+   * If the first transaction exists, but there are fewer transactions starting with it
+   * than requested, the subclass should return false.
+   *
+   * @param h the hash to look for
+   *
+   * @return true iff the transactions were found
+   */
+  virtual bool get_pruned_tx_blobs_from(const crypto::hash& h, size_t count, std::vector<cryptonote::blobdata> &bd) const = 0;
+
+  /**
+   * @brief fetches a variable number of blocks and transactions from the given height, in canonical blockchain order
+   *
+   * The subclass should return the blocks and transactions stored from the one with the given
+   * height. The number of blocks returned is variable, based on the max_size passed.
+   *
+   * @param start_height the height of the first block
+   * @param min_block_count the minimum number of blocks to return, if they exist
+   * @param max_block_count the maximum number of blocks to return
+   * @param max_tx_count the maximum number of txes to return
+   * @param max_size the maximum size of block/transaction data to return (will be exceeded by one blocks's worth at most, if min_count is met)
+   * @param blocks the returned block/transaction data
+   * @param pruned whether to return full or pruned tx data
+   * @param skip_coinbase whether to return or skip coinbase transactions (they're in blocks regardless)
+   * @param get_miner_tx_hash whether to calculate and return the miner (coinbase) tx hash
+   *
+   * The call will return at least min_block_count if possible, even if this contravenes max_tx_count
+   *
+   * @return true iff the blocks and transactions were found
+   */
+  virtual bool get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool skip_coinbase, bool get_miner_tx_hash) const = 0;
 
   /**
    * @brief fetches the prunable transaction blob with the given hash
@@ -1394,28 +1436,7 @@ public:
    *
    * @return the requested output data
    */
-  virtual output_data_t get_output_key_only(const uint64_t& amount, const uint64_t& index) const = 0;
-  inline output_data_t get_output_key_and_commitment(const uint64_t& amount, const uint64_t& index, bool v2)
-  {
-    output_data_t result = get_output_key_only(amount, index);
-    // Zero amounts already contain a zero-commitment, so only generate
-    // one for non-zero amounts
-    if (amount != 0)
-    {
-      result.commitment = rct::zeroCommit(amount, v2);
-    }
-    return result;
-  }
-  // Monero defines a get_output_key function which accepts a final boolean
-  // parameter that determines whether to include an rct zero commitment in the
-  // result, and is defaulted to true. The default cannot be applied sanely
-  // in NERVA, because there are two versions of rct zero commitments.
-  // Therefore, NERVA functions which generate an rct commitment must
-  // include a mandatory parameter specifying the commitment version.
-  // To avoid accidentally merging Monero calls to get_output_key without
-  // addressing the differences in behavior, eliminate this function in NERVA,
-  // replacing it with get_output_key_only and get_output_key_and_commitment.
-  // virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool include_commitmemt = true) const = 0;
+  virtual output_data_t get_output_key(const uint64_t& amount, const uint64_t& index, bool include_commitmemt = true) const = 0;
 
   /**
    * @brief gets an output's tx hash and index
@@ -1466,10 +1487,9 @@ public:
    * @param amounts an output amount, or as many as offsets
    * @param offsets a list of amount-specific output indices
    * @param outputs return-by-reference a list of outputs' metadata
-   * @param v2 boolean indicating whether the transaction is a v2 bulletproofs transaction
    */
-  virtual void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool v2, bool allow_partial = false) const = 0;
-
+  virtual void get_output_key(const epee::span<const uint64_t> &amounts, const std::vector<uint64_t> &offsets, std::vector<output_data_t> &outputs, bool allow_partial = false) const = 0;
+  
   /*
    * FIXME: Need to check with git blame and ask what this does to
    * document it
@@ -1507,7 +1527,7 @@ public:
    *
    * @param details the details of the transaction to add
    */
-  virtual void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata &blob, const txpool_tx_meta_t& details) = 0;
+  virtual void add_txpool_tx(const crypto::hash &txid, const cryptonote::blobdata_ref &blob, const txpool_tx_meta_t& details) = 0;
 
   /**
    * @brief update a txpool transaction's metadata
@@ -1520,12 +1540,12 @@ public:
   /**
    * @brief get the number of transactions in the txpool
    */
-  virtual uint64_t get_txpool_tx_count(bool include_unrelayed_txes = true) const = 0;
+  virtual uint64_t get_txpool_tx_count(relay_category tx_category = relay_category::broadcasted) const = 0;
 
   /**
-   * @brief check whether a txid is in the txpool
+   * @brief check whether a txid is in the txpool and meets tx_category requirements
    */
-  virtual bool txpool_has_tx(const crypto::hash &txid) const = 0;
+  virtual bool txpool_has_tx(const crypto::hash &txid, relay_category tx_category) const = 0;
 
   /**
    * @brief remove a txpool transaction
@@ -1549,10 +1569,11 @@ public:
    *
    * @param txid the transaction id of the transation to lookup
    * @param bd the blob to return
+   * @param tx_category for filtering out hidden/private txes
    *
-   * @return true if the txid was in the txpool, false otherwise
+   * @return True iff `txid` is in the pool and meets `tx_category` requirements
    */
-  virtual bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd) const = 0;
+  virtual bool get_txpool_tx_blob(const crypto::hash& txid, cryptonote::blobdata &bd, relay_category tx_category) const = 0;
 
   /**
    * @brief get a txpool transaction's blob
@@ -1561,7 +1582,17 @@ public:
    *
    * @return the blob for that transaction
    */
-  virtual cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid) const = 0;
+  virtual cryptonote::blobdata get_txpool_tx_blob(const crypto::hash& txid, relay_category tx_category) const = 0;
+
+  /**
+   * @brief Check if `tx_hash` relay status is in `category`.
+   *
+   * @param tx_hash hash of the transaction to lookup
+   * @param category relay status category to test against
+   *
+   * @return True if `tx_hash` latest relay status is in `category`.
+   */
+  bool txpool_tx_matches_category(const crypto::hash& tx_hash, relay_category category);
 
   /**
    * @brief prune output data for the given amount
@@ -1616,7 +1647,7 @@ public:
    * @param: data: the metadata for the block
    * @param: blob: the block's blob
    */
-  virtual void add_alt_block(const crypto::hash &blkid, const cryptonote::alt_block_data_t &data, const cryptonote::blobdata &blob) = 0;
+  virtual void add_alt_block(const crypto::hash &blkid, const cryptonote::alt_block_data_t &data, const cryptonote::blobdata_ref &blob) = 0;
 
   /**
    * @brief get an alternative block by hash
@@ -1659,7 +1690,7 @@ public:
    *
    * @return false if the function returns false for any transaction, otherwise true
    */
-  virtual bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata*)>, bool include_blob = false, bool include_unrelayed_txes = true) const = 0;
+  virtual bool for_all_txpool_txes(std::function<bool(const crypto::hash&, const txpool_tx_meta_t&, const cryptonote::blobdata_ref*)>, bool include_blob = false, relay_category category = relay_category::broadcasted) const = 0;
 
   /**
    * @brief runs a function over all key images stored
@@ -1751,7 +1782,8 @@ public:
    *
    * @return false if the function returns false for any output, otherwise true
    */
-  virtual bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const cryptonote::blobdata *blob)> f, bool include_blob = false) const = 0;
+  virtual bool for_all_alt_blocks(std::function<bool(const crypto::hash &blkid, const alt_block_data_t &data, const cryptonote::blobdata_ref *blob)> f, bool include_blob = false) const = 0;
+
 
   //
   // Hard fork related storage

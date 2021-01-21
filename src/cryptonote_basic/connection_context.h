@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2019, The Monero Project
+// Copyright (c) 2014-2020, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -31,6 +31,7 @@
 #pragma once
 #include <unordered_set>
 #include <atomic>
+#include <algorithm>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "net/net_utils_base.h"
 #include "copyable_atomic.h"
@@ -38,12 +39,12 @@
 
 namespace cryptonote
 {
-
   struct cryptonote_connection_context: public epee::net_utils::connection_context_base
   {
     cryptonote_connection_context(): m_state(state_before_handshake), m_remote_blockchain_height(0), m_last_response_height(0),
         m_last_request_time(boost::date_time::not_a_date_time), m_callback_request_count(0),
-        m_last_known_hash(crypto::null_hash), m_pruning_seed(0), m_rpc_port(0), m_anchor(false), m_num_requested(0) {}
+        m_last_known_hash(crypto::null_hash), m_pruning_seed(0), m_rpc_port(0), m_rpc_credits_per_hash(0), m_anchor(false), m_score(0),
+        m_expect_response(0), m_expect_height(0), m_num_requested(0) {}
 
     enum state
     {
@@ -53,6 +54,12 @@ namespace cryptonote
       state_idle,
       state_normal
     };
+
+    static constexpr int handshake_command() noexcept { return 1001; }
+    bool handshake_complete() const noexcept { return m_state != state_before_handshake; }
+
+    //! \return Maximum number of bytes permissible for `command`.
+    static size_t get_max_bytes(int command) noexcept;
 
     state m_state;
     std::vector<std::pair<crypto::hash, uint64_t>> m_needed_objects;
@@ -64,7 +71,11 @@ namespace cryptonote
     crypto::hash m_last_known_hash;
     uint32_t m_pruning_seed;
     uint16_t m_rpc_port;
+    uint32_t m_rpc_credits_per_hash;
     bool m_anchor;
+    int32_t m_score;
+    int m_expect_response;
+    uint64_t m_expect_height;
     size_t m_num_requested;
   };
 
