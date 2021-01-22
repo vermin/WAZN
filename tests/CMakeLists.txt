@@ -126,7 +126,7 @@ add_test(
 #
 if (${WAZN_WALLET_CRYPTO_BENCH} STREQUAL "auto")
   set(WAZN_WALLET_CRYPTO_BENCH "cn")
-  monero_crypto_autodetect(AVAILABLE BEST)
+  wazn_crypto_autodetect(AVAILABLE BEST)
   if (DEFINED AVAILABLE)
     list(APPEND WAZN_WALLET_CRYPTO_BENCH ${AVAILABLE})
   endif ()
@@ -142,7 +142,7 @@ foreach(BENCH IN LISTS WAZN_WALLET_CRYPTO_BENCH)
     message(FATAL_ERROR "Invalid WAZN_WALLET_CRYPTO_BENCH option ${BENCH}")
   endif ()
 
-  monero_crypto_get_target(${BENCH} BENCH_LIBRARY)
+  wazn_crypto_get_target(${BENCH} BENCH_LIBRARY)
   list(APPEND BENCH_OBJECTS $<TARGET_OBJECTS:${BENCH_LIBRARY}>)
 
   wazn_crypto_get_namespace(${BENCH} BENCH_NAMESPACE)
