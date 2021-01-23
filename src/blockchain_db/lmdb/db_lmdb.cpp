@@ -4531,12 +4531,12 @@ uint64_t BlockchainLMDB::get_database_size() const
   return size;
 }
 
-void BlockchainLMDB::fixup()
-{
-  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  // Always call parent as well
-  BlockchainDB::fixup();
-}
+// void BlockchainLMDB::fixup()
+// {
+//  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
+//     Always call parent as well
+//  BlockchainDB::fixup();
+// }
 
 #define RENAME_DB(name) do { \
     char n2[] = name; \
