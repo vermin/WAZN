@@ -411,7 +411,7 @@ bool t_command_server::apropos(const std::vector<std::string>& args)
 std::string t_command_server::get_commands_str()
 {
   std::stringstream ss;
-  ss << "Wazn" '" << WAZN_RELEASE_NAME << "' (v" << WAZN_VERSION_FULL << ")" << std::endl;
+  ss << "Wazn '" << WAZN_RELEASE_NAME << "' (v" << WAZN_VERSION_FULL << ")" << std::endl;
   ss << "Commands: " << std::endl;
   std::string usage = m_command_lookup.get_usage();
   boost::replace_all(usage, "\n", "\n  ");

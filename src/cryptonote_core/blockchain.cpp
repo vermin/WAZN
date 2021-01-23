@@ -355,11 +355,11 @@ bool Blockchain::init(BlockchainDB* db, const network_type nettype, bool offline
   {
   }
 
-  if (m_nettype != FAKECHAIN)
-  {
-    // ensure we fixup anything we found and fix in the future
-    m_db->fixup();
-  }
+//  if (m_nettype != FAKECHAIN)
+//  {
+// ensure we fixup anything we found and fix in the future
+//    m_db->fixup();
+//  }
 
   db_rtxn_guard rtxn_guard(m_db);
 
