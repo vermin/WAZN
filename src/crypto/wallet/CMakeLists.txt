@@ -30,7 +30,7 @@
 #
 # Possibly user defined values.
 #
-set(MONER0_WALLET_CRYPTO_LIBRARY "auto" CACHE STRING "Select a wallet crypto library")
+set(WAZN_WALLET_CRYPTO_LIBRARY "auto" CACHE STRING "Select a wallet crypto library")
 
 #
 # If the user specified "auto", detect best library defaulting to internal.
