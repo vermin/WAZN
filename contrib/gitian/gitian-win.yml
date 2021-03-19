@@ -1,5 +1,5 @@
 ---
-name: "wazn-win-0.93"
+name: "wazn-win-1.28"
 enable_cache: true
 suites:
 - "bionic"

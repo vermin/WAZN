@@ -88,8 +88,8 @@ const uint64_t AMOUNT_1WAZN  =  1000000000000L;
 
 const std::string PAYMENT_ID_EMPTY = "";
 
-std::string TESTNET_DAEMON_ADDRESS = "localhost:38081";
-std::string MAINNET_DAEMON_ADDRESS = "localhost:18081";
+std::string TESTNET_DAEMON_ADDRESS = "localhost:33787";
+std::string MAINNET_DAEMON_ADDRESS = "localhost:11787";
 
 
 }

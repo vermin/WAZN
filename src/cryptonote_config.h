@@ -38,7 +38,7 @@
 #define CRYPTONOTE_DNS_TIMEOUT_MS                       20000
 
 #define CRYPTONOTE_MAX_BLOCK_NUMBER                     500000000
-#define CRYPTONOTE_MAX_TX_SIZE                          1000000
+#define CRYPTONOTE_MAX_TX_SIZE                          100000000
 #define CRYPTONOTE_MAX_TX_PER_BLOCK                     0x10000000
 #define CRYPTONOTE_PUBLIC_ADDRESS_TEXTBLOB_VER          0
 #define CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW            60
@@ -51,9 +51,9 @@
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW               60
 
 // MONEY_SUPPLY - total number coins to be generated
-#define MONEY_SUPPLY                                    ((uint64_t)(100000000000000))
+#define MONEY_SUPPLY                                    ((uint64_t)(100000000000000000))
 #define EMISSION_SPEED_FACTOR_PER_MINUTE                (20)
-#define FINAL_SUBSIDY_PER_MINUTE                        ((uint64_t)300000000000) // 3 * pow(10, 11)
+#define FINAL_SUBSIDY_PER_MINUTE                        ((uint64_t)30000000000) // 3 * pow(10, 10)
 
 #define CRYPTONOTE_REWARD_BLOCKS_WINDOW                 100
 #define CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2    60000 //size of block (bytes) after which reward for block calculated using block size
@@ -62,9 +62,9 @@
 #define CRYPTONOTE_LONG_TERM_BLOCK_WEIGHT_WINDOW_SIZE   100000 // size in blocks of the long term block weight median window
 #define CRYPTONOTE_SHORT_TERM_BLOCK_WEIGHT_SURGE_FACTOR 50
 #define CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE          600
-#define CRYPTONOTE_DISPLAY_DECIMAL_POINT                6
+#define CRYPTONOTE_DISPLAY_DECIMAL_POINT                9
 // COIN - number of smallest units in one coin
-#define COIN                                            ((uint64_t)1000000000000) // pow(10, 12)
+#define COIN                                            ((uint64_t)1000000000) // pow(10, 9)
 
 #define FEE_PER_KB_OLD                                  ((uint64_t)10000000000) // pow(10, 10)
 #define FEE_PER_KB                                      ((uint64_t)2000000000) // 2 * pow(10, 9)
@@ -72,14 +72,14 @@
 #define DYNAMIC_FEE_PER_KB_BASE_FEE                     ((uint64_t)2000000000) // 2 * pow(10,9)
 #define DYNAMIC_FEE_PER_KB_BASE_BLOCK_REWARD            ((uint64_t)10000000000000) // 10 * pow(10,12)
 #define DYNAMIC_FEE_PER_KB_BASE_FEE_V5                  ((uint64_t)2000000000 * (uint64_t)CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V2 / CRYPTONOTE_BLOCK_GRANTED_FULL_REWARD_ZONE_V5)
-#define DYNAMIC_FEE_REFERENCE_TRANSACTION_WEIGHT         ((uint64_t)3000)
+#define DYNAMIC_FEE_REFERENCE_TRANSACTION_WEIGHT        ((uint64_t)3000)
 
 #define ORPHANED_BLOCKS_MAX_COUNT                       100
 
 
 #define DIFFICULTY_TARGET_V2                            120  // seconds
-#define DIFFICULTY_TARGET_V1                            120  // seconds - before first fork
-#define DIFFICULTY_WINDOW                               720 // blocks
+#define DIFFICULTY_TARGET_V1                            120  // seconds
+#define DIFFICULTY_WINDOW                               360 // blocks
 #define DIFFICULTY_LAG                                  15  // !!!
 #define DIFFICULTY_CUT                                  60  // timestamps to cut after sorting
 #define DIFFICULTY_BLOCKS_COUNT                         DIFFICULTY_WINDOW + DIFFICULTY_LAG
@@ -195,7 +195,6 @@
 #define CRYPTONOTE_PRUNING_STRIPE_SIZE          4096 // the smaller, the smoother the increase
 #define CRYPTONOTE_PRUNING_LOG_STRIPES          3 // the higher, the more space saved
 #define CRYPTONOTE_PRUNING_TIP_BLOCKS           5500 // the smaller, the more space saved
-//#define CRYPTONOTE_PRUNING_DEBUG_SPOOF_SEED
 
 #define RPC_CREDITS_PER_HASH_SCALE ((float)(1<<24))
 
@@ -209,26 +208,26 @@ namespace config
   uint64_t const DEFAULT_DUST_THRESHOLD = ((uint64_t)2000000000); // 2 * pow(10, 9)
   uint64_t const BASE_REWARD_CLAMP_THRESHOLD = ((uint64_t)100000000); // pow(10, 8)
 
-  uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x137130;                // starts with "Wazn"
-  uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x3bab30;     // starts with "WaZn"
-  uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x2fab30;             // starts with "WaZN"
+  uint64_t const CRYPTONOTE_PUBLIC_ADDRESS_BASE58_PREFIX = 0x77130;                // starts with "WazN"
+  uint64_t const CRYPTONOTE_PUBLIC_INTEGRATED_ADDRESS_BASE58_PREFIX = 0x2fab30;    // starts with "WaZN"
+  uint64_t const CRYPTONOTE_PUBLIC_SUBADDRESS_BASE58_PREFIX = 0x3bab30;            // starts with "WaZn"
   uint16_t const P2P_DEFAULT_PORT = 11786;
   uint16_t const RPC_DEFAULT_PORT = 11787;
   uint16_t const ZMQ_RPC_DEFAULT_PORT = 11788;
   boost::uuids::uuid const NETWORK_ID = { {
-      0x12 ,0x30, 0xF1, 0x71 , 0x61, 0x04 , 0x41, 0x61, 0x17, 0x31, 0x00, 0x82, 0x16, 0xA1, 0xA1, 0x10
-    } }; // Bender's nightmare
-  std::string const GENESIS_TX = "";
+        0xC6, 0x04, 0xDB, 0x3A, 0x33, 0x8A, 0x47, 0xDE, 0xB9, 0x4D, 0x5C, 0xD7, 0x5B, 0xD6, 0xCC, 0x57
+    } };
+  std::string const GENESIS_TX = "013c01ff0003b1bfb4de02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880718088aca3cf02022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa7091680d0dbc3f4020252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d621012cfac44dd60d88cd77f59819e5524ff0a0fe56488ceb413f3b6d201a40791376";
   uint32_t const GENESIS_NONCE = 10000;
 
   // Hash domain separators
   const char HASH_KEY_BULLETPROOF_EXPONENT[] = "bulletproof";
   const char HASH_KEY_RINGDB[] = "ringdsb";
   const char HASH_KEY_SUBADDRESS[] = "SubAddr";
-  const unsigned char HASH_KEY_ENCRYPTED_PAYMENT_ID = 0x97;                         // 151
-  const unsigned char HASH_KEY_WALLET = 0x96;                                       // 150
-  const unsigned char HASH_KEY_WALLET_CACHE = 0x97;                                 // 151
-  const unsigned char HASH_KEY_RPC_PAYMENT_NONCE = 0x42;                            // 66
+  const unsigned char HASH_KEY_ENCRYPTED_PAYMENT_ID = 0x97;
+  const unsigned char HASH_KEY_WALLET = 0x96;
+  const unsigned char HASH_KEY_WALLET_CACHE = 0x97;
+  const unsigned char HASH_KEY_RPC_PAYMENT_NONCE = 0x42;
   const unsigned char HASH_KEY_MEMORY = 'k';
   const unsigned char HASH_KEY_MULTISIG[] = {'M', 'u', 'l', 't' , 'i', 's', 'i', 'g', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
   const unsigned char HASH_KEY_TXPROOF_V2[] = "TXPROOF_V2";
@@ -246,9 +245,9 @@ namespace config
     uint16_t const RPC_DEFAULT_PORT = 22787;
     uint16_t const ZMQ_RPC_DEFAULT_PORT = 22788;
     boost::uuids::uuid const NETWORK_ID = { {
-        0xCA, 0x68, 0x57, 0xD2, 0xBE, 0x87, 0x02, 0xF1, 0x2B, 0x3B, 0xC0, 0x87, 0x6C, 0x3E, 0x39, 0x76
-      } }; // Bender's daydream
-    std::string const GENESIS_TX = "";
+        0xC6, 0x04, 0xDB, 0x3A, 0x33, 0x8A, 0x47, 0xDE, 0xB9, 0x4D, 0x5C, 0xD7, 0x5B, 0xD6, 0xCC, 0x58
+      } };
+    std::string const GENESIS_TX = "013c01ff0003b1bfb4de02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880718088aca3cf02022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa7091680d0dbc3f4020252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d62101abeeb68d50ee2b41e852558e234a81815bc73c482484a77ede4e5f25eb69022d";
     uint32_t const GENESIS_NONCE = 10001;
   }
 
@@ -261,9 +260,9 @@ namespace config
     uint16_t const RPC_DEFAULT_PORT = 33787;
     uint16_t const ZMQ_RPC_DEFAULT_PORT = 33788;
     boost::uuids::uuid const NETWORK_ID = { {
-        0xCA, 0x68, 0x57, 0xD2, 0xBE, 0x87, 0x02, 0xF1, 0x2B, 0x3B, 0xC0, 0x87, 0x6C, 0x3E, 0x39, 0x77
-      } }; // Bender's daydream
-    std::string const GENESIS_TX = "";
+        0xC6, 0x04, 0xDB, 0x3A, 0x33, 0x8A, 0x47, 0xDE, 0xB9, 0x4D, 0x5C, 0xD7, 0x5B, 0xD6, 0xCC, 0x59
+      } };
+    std::string const GENESIS_TX = "013c01ff0003b1bfb4de02029b2e4c0281c0b02e7c53291a94d1d0cbff8883f8024f5142ee494ffbbd0880718088aca3cf02022a74a3c4c36d32e95633d44ba9a7b8188297b2ac91afecab826b86fabaa7091680d0dbc3f4020252d128bc9913d5ee8b702c37609917c2357b2f587e5de5622348a3acd718e5d621012fe83c4fbfe681a9727b8763065af40b10f0b3ffd7020b29af882ccababdd787";
     uint32_t const GENESIS_NONCE = 10002;
   }
 }

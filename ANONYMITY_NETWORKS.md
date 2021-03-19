@@ -78,8 +78,8 @@ type, and max connections:
 ```
 
 which tells `waznd` that a max of 25 inbound Tor connections are being
-received at address "rveahdfho7wo4b2m.onion:28083" and forwarded to `waznd`
-localhost port 28083, and a default max I2P connections are being received at
+received at address "rveahdfho7wo4b2m.onion:22789" and forwarded to `waznd`
+localhost port 22789, and a default max I2P connections are being received at
 address "cmeua5767mz2q5jsaelk2rxhf67agrwuetaso5dzbenyzwlbkg2q.b32.i2p:5000" and
 forwarded to `waznd` localhost port 30000.
 These addresses will be shared with outgoing peers, over the same network type,

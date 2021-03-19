@@ -33,11 +33,11 @@
 #define WAZN_DEFAULT_LOG_CATEGORY "blockchain.hardforks"
 
 const hardfork_t mainnet_hard_forks[] = {
-  // version 1 from the start of the blockchain
-  { 1, 1, 0, 1341378000 },
+  // version 1 from the start of the blockchain. Genesis happened on 25th of January 2021 at 23:16:30 UTC.
+  { 1, 1, 0, 1615730400 },
 
-  // version 2 starts from block 1009827, which is on or around the 20th of March, 2016. Fork time finalised on 2015-09-20. No fork voting occurs for the v2 fork.
-  // 2, 1009827, 0, 1442763710 },
+  // version 14 starts from block 2, which is on or around the 25th of January 2021. Fork time finalised on 25-01-2021 at 23:25:12 UTC.
+  { 13, 2, 0, 1615730700 },
 
   // version 3 starts from block 1141317, which is on or around the 24th of September, 2016. Fork time finalised on 2016-03-21.
   // 3, 1141317, 0, 1458558528 },
@@ -73,20 +73,15 @@ const hardfork_t mainnet_hard_forks[] = {
   // { 14, 2210720, 0, 1598180818 },
 };
 const size_t num_mainnet_hard_forks = sizeof(mainnet_hard_forks) / sizeof(mainnet_hard_forks[0]);
-const uint64_t mainnet_hard_fork_version_1_till = 1009826;
+const uint64_t mainnet_hard_fork_version_1_till = 1;
 
 const hardfork_t testnet_hard_forks[] = {
   // version 1 from the start of the blockchain
-  { 1, 1, 0, 1341378000 },
-
-  // version 2 starts from block 624634, which is on or around the 23rd of November, 2015. Fork time finalised on 2015-11-20. No fork voting occurs for the v2 fork.
-  // { 2, 624634, 0, 1445355000 },
-
-  // versions 3-5 were passed in rapid succession from September 18th, 2016
+  { 1, 1, 0, 1615730400 },
+  { 13, 2, 0, 1615730700 },
   // { 3, 800500, 0, 1472415034 },
   // { 4, 801219, 0, 1472415035 },
   // { 5, 802660, 0, 1472415036 + 86400*180 }, // add 5 months on testnet to shut the update warning up since there's a large gap to v6
-
   // { 6, 971400, 0, 1501709789 },
   // { 7, 1057027, 0, 1512211236 },
   // { 8, 1057058, 0, 1533211200 },
@@ -98,14 +93,12 @@ const hardfork_t testnet_hard_forks[] = {
   // { 14, 1544659, 0, 1599069377 },
 };
 const size_t num_testnet_hard_forks = sizeof(testnet_hard_forks) / sizeof(testnet_hard_forks[0]);
-const uint64_t testnet_hard_fork_version_1_till = 624633;
+const uint64_t testnet_hard_fork_version_1_till = 1;
 
 const hardfork_t stagenet_hard_forks[] = {
   // version 1 from the start of the blockchain
-  { 1, 1, 0, 1341378000 },
-
-  // versions 2-7 in rapid succession from March 13th, 2018
-  // { 2, 32000, 0, 1521000000 },
+  { 1, 1, 0, 1615730400 },
+  { 13, 2, 0, 1615730700 },
   // { 3, 33000, 0, 1521120000 },
   // { 4, 34000, 0, 1521240000 },
   // { 5, 35000, 0, 1521360000 },

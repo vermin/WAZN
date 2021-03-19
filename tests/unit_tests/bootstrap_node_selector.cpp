@@ -42,18 +42,18 @@ protected:
 
   const std::map<std::string, bool> white_nodes = {
     {
-      "white_node_1:18089", true
+      "white_node_1:11797", true
     },
     {
-      "white_node_2:18081", true
+      "white_node_2:11787", true
     }
   };
   const std::map<std::string, bool> gray_nodes = {
     {
-      "gray_node_1:18081", false
+      "gray_node_1:11787", false
     },
     {
-      "gray_node_2:18089", false
+      "gray_node_2:11797", false
     }
   };
 

@@ -86,7 +86,7 @@ Prepare for building with docker:
 sudo apt-get install git make curl docker.io
 ```
 
-Consider adding `gitianuser` to the `docker` group after reading about [the security implications](https://docs.docker.com/v17.09/engine/installation/linux/linux-postinstall/):
+Consider adding `gitianuser` to the `docker` group after reading about [the security implications](https://docs.docker.com/v1.41/engine/installation/linux/linux-postinstall/):
 
 ```bash
 sudo groupadd docker
@@ -125,8 +125,8 @@ cp wazn/contrib/gitian/gitian-build.py .
 Setup for LXC:
 
 ```bash
-GH_USER=fluffypony
-VERSION=v0.17.1.9
+GH_USER=vermin
+VERSION=v0.1.2.8
 
 ./gitian-build.py --setup $GH_USER $VERSION
 ```
@@ -181,8 +181,8 @@ Signing assert files
 If you chose to do detached signing using `--detach-sign` above (recommended), you need to copy these uncommitted changes to your host machine, then sign them using your gpg key like so:
 
 ```bash
-GH_USER=fluffypony
-VERSION=v0.17.1.9
+GH_USER=vermin
+VERSION=v0.1.2.8
 
 gpg --detach-sign ${VERSION}-linux/${GH_USER}/wazn-linux-*-build.assert
 gpg --detach-sign ${VERSION}-win/${GH_USER}/wazn-win-*-build.assert

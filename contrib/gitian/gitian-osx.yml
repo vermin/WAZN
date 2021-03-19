@@ -1,5 +1,5 @@
 ---
-name: "wazn-osx-0.93"
+name: "wazn-osx-1.28"
 enable_cache: true
 suites:
 - "bionic"

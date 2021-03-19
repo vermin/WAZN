@@ -1,5 +1,5 @@
 ---
-name: "wazn-freebsd-0.93"
+name: "wazn-freebsd-1.28"
 enable_cache: true
 suites:
 - "bionic"

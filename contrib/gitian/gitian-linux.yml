@@ -1,5 +1,5 @@
 ---
-name: "wazn-linux-0.93"
+name: "wazn-linux-1.28"
 enable_cache: true
 suites:
 - "bionic"
