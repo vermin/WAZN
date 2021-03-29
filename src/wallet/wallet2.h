@@ -718,7 +718,7 @@ private:
      * \return                      The secret key of the generated wallet
      */
     crypto::secret_key generate(const std::string& wallet, const epee::wipeable_string& password,
-      const crypto::secret_key& recovery_param = crypto::secret_key(), bool recover = false;
+      const crypto::secret_key& recovery_param = crypto::secret_key(), bool recover = false,
       bool two_random = false, bool create_address_file = false);
     /*!
      * \brief Creates a wallet from a public address and a spend/view secret key pair.
