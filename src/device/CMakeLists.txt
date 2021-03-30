@@ -57,6 +57,22 @@ if(HIDAPI_FOUND)
     )
 endif()
 
+if(WAZNIYA_HIDAPI)
+  if(HIDAPI_FOUND)
+    message(FATAL_ERROR "HIDAPI_FOUND but we want WAZNIYA_HIDAPI")
+  endif()
+  add_definitions(-DHAVE_WAZNIYA)
+  set(device_sources
+    ${device_sources}
+    device_ledger.cpp
+    )
+  set(device_headers
+    ${device_headers}
+    device_ledger.hpp
+    device_io_wazniya.hpp
+    )
+endif()
+
 set(device_private_headers)
 
 
